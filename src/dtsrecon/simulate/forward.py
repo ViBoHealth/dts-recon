@@ -5,7 +5,10 @@ S1: N = Poisson(I0 exp(-p)) + Normal(0, sigma_e)  (counts; electronic noise addi
     then log conversion p_hat = -ln(max(N, floor) / I0) with a known, noiseless flat field I0.
     Small-noise theory: E[p_hat] ≈ p + (lam + sigma_e^2) / (2 lam^2),  Var[p_hat] ≈ (lam + sigma_e^2) / lam^2,
     lam = I0 exp(-p).
-S2: polyenergetic (not yet implemented).
+S2: polyenergetic: I/I0 = sum_E w(E) exp(-sum_m mu_m(E) L_m), p = -ln(I/I0), with w the detected-signal
+    weights of an energy-integrating detector (simulate/spectrum.py). Beam hardening: p grows more slowly than
+    linearly with thickness. S1 noise can be applied on top of S2 line integrals (counts lam = I0 exp(-p));
+    energy-integrating (Swank) noise is not modelled.
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ import numpy as np
 
 from ..geometry.schema import ProjectionGeometry, VolumeSpec
 from ..phantoms.primitives import Phantom
-from .materials import mu
+from .materials import mu, mu_spectrum
 
 
 def path_lengths(phantom: Phantom, geom: ProjectionGeometry, method: str = "analytic",
@@ -44,6 +47,23 @@ def mu_volume(fractions: dict[str, np.ndarray]) -> np.ndarray:
 def s0_line_integrals(L: dict[str, np.ndarray]) -> np.ndarray:
     """S0: monoenergetic line integrals from per-material path lengths."""
     return sum(mu(m) * Lm for m, Lm in L.items())
+
+
+def s2_line_integrals(L: dict[str, np.ndarray], spectrum=None) -> np.ndarray:
+    """S2: polyenergetic line integrals -ln(I/I0) from per-material path lengths (mm)."""
+    from .spectrum import default_spectrum
+
+    sp = spectrum or default_spectrum()
+    mats = list(L)
+    mus = {m: mu_spectrum(m, sp.energies_kev) for m in mats}
+    shape = np.shape(L[mats[0]]) if mats else ()
+    acc = np.zeros(shape)
+    for k, w in enumerate(sp.weights):
+        expo = np.zeros(shape)
+        for m in mats:
+            expo += mus[m][k] * L[m]
+        acc += w * np.exp(-expo)
+    return -np.log(acc)
 
 
 @dataclass

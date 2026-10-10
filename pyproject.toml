@@ -14,6 +14,7 @@ dependencies = [
     "pyyaml",
     "pydantic>=2",
     "tifffile",
+    "xraydb",
 ]
 # leapct is not on PyPI; it is built from source (third_party/leap/build_leap_mac.sh).
 # tigre is installed on the GPU machine only.

@@ -101,3 +101,50 @@ def test_s1_noise_matches_theory(i0, sigma_e, p):
     assert np.sqrt(v_th) < 0.06
     assert abs(x.mean() - m_th) < 3 * np.sqrt(v_th / x.size) + 1e-4
     assert x.var() / v_th == pytest.approx(1.0, abs=0.02)
+
+
+# --- S2 -----------------------------------------------------------------------------------------------
+from dtsrecon.simulate.forward import s2_line_integrals  # noqa: E402
+from dtsrecon.simulate.materials import mu, mu_spectrum  # noqa: E402
+from dtsrecon.simulate.spectrum import Spectrum, default_spectrum, tungsten_transmission  # noqa: E402
+
+
+def test_materials_match_nist_cortical_bone():
+    """xraydb + ICRU-44 composition reproduce NIST's tabulated mu/rho for cortical bone (read 2026-10-09)."""
+    nist = {20: 4.001, 30: 1.331, 40: 0.6655, 60: 0.3148, 80: 0.2229}  # cm2/g
+    e = np.array(list(nist), dtype=float)
+    mu_rho = mu_spectrum("cortical_bone", e) * 10 / 1.92
+    assert np.allclose(mu_rho, list(nist.values()), rtol=2e-3)
+
+
+def test_s2_monoenergetic_limit_equals_s0():
+    sp = Spectrum(np.array([50.0]), np.array([1.0]), np.array([1.0]))
+    L = {"soft_tissue": np.array([0.0, 10.0, 80.0]), "cortical_bone": np.array([0.0, 2.0, 5.0])}
+    expect = mu_spectrum("soft_tissue", [50.0])[0] * L["soft_tissue"] + mu_spectrum("cortical_bone", [50.0])[0] * L["cortical_bone"]
+    assert np.allclose(s2_line_integrals(L, sp), expect, rtol=1e-12)
+
+
+def test_s2_beam_hardening():
+    """Effective attenuation falls with thickness; thin-object slope equals the spectrum-weighted mean mu."""
+    sp = default_spectrum()
+    t = np.array([1e-3, 10.0, 40.0, 100.0])
+    p = s2_line_integrals({"water": t}, sp)
+    eff = p / t
+    assert np.all(np.diff(eff) < 0)
+    thin = float(np.sum(sp.weights * mu_spectrum("water", sp.energies_kev)))
+    assert eff[0] == pytest.approx(thin, rel=1e-3)
+    # added Al hardens the beam: less attenuation per mm of water
+    hard = s2_line_integrals({"water": t}, tungsten_transmission(70, filters=[("aluminum", 2.0)]))
+    assert np.all(hard[1:] < p[1:])
+
+
+def test_s0_value_is_local_s2_slope_inside_head():
+    """S0 single-energy values are the spectrum-weighted mu after 40 mm soft tissue, i.e. the local slope
+    d p_S2 / dL of S2 at that depth: what a reconstruction recovers for a small structure inside the head."""
+    for m in ("soft_tissue", "cortical_bone", "enamel"):
+        base = {"soft_tissue": np.array([40.0])}
+        dl = 0.01
+        with_m = dict(base)
+        with_m[m] = with_m.get(m, 0) + dl if m != "soft_tissue" else np.array([40.0 + dl])
+        slope = (s2_line_integrals(with_m)[0] - s2_line_integrals(base)[0]) / dl
+        assert slope == pytest.approx(mu(m), rel=0.01)

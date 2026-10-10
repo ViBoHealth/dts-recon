@@ -7,15 +7,16 @@ power_max_w: 10
 current_range_ua: [5, 200]
 target:
   type: transmission
-  material: null            # one of Au, Ag, Rh, W — TBD (Gil)
-  thickness_um: null        # not stated
+  material: W               # Gil, 2026-10-09
+  thickness_um: null        # not stated; simulation uses 5 um W self-filtration (PLACEHOLDER)
 window:
   material: Be
-  thickness_mm: null        # not stated
-added_filtration: []        # e.g. [{material: Al, thickness_mm: 1.0}] — TBD
-focal_spot_mm: null         # not stated; needed for S4 blur
+  thickness_mm: 0.0         # Gil: thin, negligible (exact value not recalled)
+added_filtration: []        # none (Gil); 1-2 mm Al easy to add — simulated as an option
+focal_spot_mm: 0.5          # Gil: 'effectively 0.5 mm or better' in past units; not stated by NSI
 depth_to_focal_spot_mm: 2.4 # stated
 cone_angle_deg: 110         # full width
 cathode: tungsten filament
 hv_polarity: grounded anode
-spectrum: null              # request measured spectrum from NSI/Rigaku at the dental kV
+operating_kv: 70             # dental (Gil, 2026-10-09)
+spectrum: null              # measured spectrum still to request from NSI/Rigaku; simulate/spectrum.py models it (Kramers, PLACEHOLDER)

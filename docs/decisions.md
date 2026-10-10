@@ -98,3 +98,15 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     cranium shell, nasal air; scales cat / small dog / medium dog / large dog. Anatomy is PLACEHOLDER. By
     default asymmetric: a periapical lesion (near mandible, tooth 2) and a missing tooth with empty socket
     (far mandible, tooth 3), recorded as ground truth — targets for M3/M4.
+20. **S2 polyenergetic model (2026-10-09).** Source: M237, W transmission target, 70 kV, no added filtration
+    (Gil; 1–2 mm Al optional), focal spot ~0.5 mm (Gil, from past units), Be window negligible. Attenuation:
+    xraydb (new dependency, approved) with NIST/ICRU-44 compositions for soft tissue, cortical bone, adipose,
+    water, PMMA, CsI (read from NIST Table 2); reproduces NIST cortical-bone mu/rho to 0.01 % (20–80 keV).
+    Enamel, dentin, trabecular bone are PLACEHOLDER mixtures. Spectrum: Kramers bremsstrahlung, 5 um W
+    self-filtration (PLACEHOLDER), energy-integrating 0.5 mm CsI (PLACEHOLDER); mean detected energy 33.9 keV
+    unfiltered, 38.9 / 41.0 keV with 1 / 2 mm Al. S0/S1 single-energy values are now derived from this
+    spectrum after 40 mm soft tissue (local slope; mean 42.6 keV), replacing the earlier placeholder table.
+    Dental simulation (medium dog, OS-SART 8 it): beam hardening lowers reconstructed hard-tissue values by
+    ~26–36 % vs S0 (enamel 0.107 -> 0.069 /mm); all DTS values are far below true mu for thin dense structures
+    (limited angle + partial volume), so reconstructed values are not quantitative. Max S0 line integral 9.1
+    (transmission ~1e-4: photon starvation with the placeholder I0) vs 6.1 for S2.
