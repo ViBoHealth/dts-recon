@@ -132,3 +132,22 @@ def ghost_ratio(f: np.ndarray, vol: VolumeSpec, xyz, r_core: float, guard_mm: fl
     vals = f[far][:, win]
     bumps = vals.max(axis=1) - np.median(vals, axis=1)
     return float(bumps.max() / peak)
+
+
+def inplane_fwhm(f: np.ndarray, vol: VolumeSpec, xyz, half_window_mm: float = 8.0) -> float:
+    """In-plane resolution: mean of the x and y FWHM (mm) of a small object's profile through its center in
+    its focal slice, after subtracting the local background (median of the window border).
+    Used instead of the disc-edge MTF: limited-angle DTS suppresses the low-frequency interior of wide thin
+    objects, so edge profiles overshoot (150–200 % measured) and the edge-method MTF (normalized at f = 0)
+    becomes meaningless."""
+    z, xs, ys = vol.axis("z"), vol.axis("x"), vol.axis("y")
+    k = int(np.argmin(np.abs(z - xyz[2])))
+    ix, iy = int(np.argmin(np.abs(xs - xyz[0]))), int(np.argmin(np.abs(ys - xyz[1])))
+    h = max(2, int(round(half_window_mm / vol.voxel_xy)))
+    win = f[k, max(iy - h, 0): iy + h + 1, max(ix - h, 0): ix + h + 1].astype(float)
+    border = np.concatenate([win[0], win[-1], win[:, 0], win[:, -1]])
+    win = win - np.median(border)
+    cy, cx = iy - max(iy - h, 0), ix - max(ix - h, 0)
+    wx = fwhm(xs[max(ix - h, 0): ix + h + 1], win[cy, :], xyz[0])
+    wy = fwhm(ys[max(iy - h, 0): iy + h + 1], win[:, cx], xyz[1])
+    return float(np.nanmean([wx, wy]))

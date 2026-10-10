@@ -59,3 +59,12 @@ def test_ghost_ratio_detects_replica():
     bead = lambda x, y, z, a: a * np.exp(-((xs - x) ** 2 + (ys - y) ** 2 + (zs - z) ** 2) / (2 * 0.7**2))
     f = bead(0, 0, 20, 1.0) + bead(8, 0, 34, 0.3)  # a 30 % replica 14 mm away in depth
     assert ghost_ratio(f, VOL, (0.0, 0.0, 20.0), r_core=0.6) == pytest.approx(0.3 / 0.83, rel=0.25)
+
+
+def test_inplane_fwhm_of_gaussian_bead():
+    from dtsrecon.metrics.iq import inplane_fwhm
+
+    xs, ys, zs = _grid()
+    s = 1.2
+    f = 0.1 + np.exp(-(xs**2 + ys**2) / (2 * s**2) - (zs - 20.0) ** 2 / (2 * 5.0**2))
+    assert inplane_fwhm(f, VOL, (0.0, 0.0, 20.0)) == pytest.approx(2.3548 * s, rel=0.05)

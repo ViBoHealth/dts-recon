@@ -126,3 +126,20 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     - Observed: DTS-FBP gain rises with height (identical beads 0.7 at z=35 vs 1.0 at z=125 mm): a depth-dependent
       weighting to characterize and correct in M4.
     - Depth metric windows are now in mm (a voxel-count window reached the next bead at coarse voxels).
+22. **M4 (2026-10-09).** Metrics (`metrics/iq.py`), stages S3–S5 (`simulate/acquisition.py`), trade study
+    (`scripts/m4_study.py`, results in `reports/m4/`): 8 grid geometries x DTS-FBP / OS-SART / ASD-POCS x
+    IQ + dental phantoms, realistic stages; baseline also S0+S1 and +1.5 mm Al. All physics PLACEHOLDER;
+    noise not dose-matched (fixed I0 per projection).
+    - Disc-edge MTF dropped: DTS loses the low-frequency interior of wide thin objects (edge overshoot
+      150–200 %), so the f=0-normalized edge MTF is meaningless. In-plane resolution = bead FWHM instead.
+    - ASD-POCS defaults were mistuned for realistic data (depth error 2.2 slices, ghost ratio up to 2.8);
+      tuned on the IQ phantom at 6x6/400 (alpha 0.05, 10 TV steps, w_z 0.25) — home advantage at that case.
+    - Results (realistic): all methods locate IQ beads within 0.75 slice (ASD-POCS 3x3 worst). Depth
+      resolution (ASF FWHM) ASD-POCS 2.3–5.0 mm < OS-SART 5.2–6.4 < DTS-FBP 5.2–7.9; 400 mm source extent beats
+      300 mm and SID 600 (larger angle). Ghost ratio falls with projection count (FBP 0.33 at 9 -> 0.15 at 36)
+      and is lowest for ASD-POCS (~0.08 at >= 20 projections). Diminishing returns beyond ~25 projections.
+      In-plane bead FWHM ~2.0–2.2 mm everywhere (detector/voxel limited at 0.8 mm binning).
+    - Dental: DTS-FBP (radial, no slice-thickness filter) finds the strongest lucency at the wrong jaw for the
+      periapical lesion in 5 of 8 realistic geometries; OS-SART and ASD-POCS find it (within 2.5 mm) in all.
+      The socket is mislocalized/low-CNR at 300 mm extent (smaller angle -> poor depth separation of jaws).
+      1.5 mm Al changed IQ metrics little (not dose-matched).
