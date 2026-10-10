@@ -70,3 +70,8 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     `.../Suggested Measurements for the Panel-ULIV Prototype.pdf`.
 14. **Depth metric uses the bead's own connected blob** (scipy.ndimage.label) so neighbouring beads inside
     the window cannot bias the centroid; projection check skips (bead, projection) pairs off the detector edge.
+15. **Brief v0.3 and +x clarification** (Gil approved the brief update, 2026-10-09). The device is the NextGen
+    PANEL moving-source prototype with a 2D source scan; first use case veterinary dental (brief §1, §11).
+    §4.1 "+x = nominal sweep direction" no longer defines anything for a 2D grid, so +x is now "along the
+    detector's column index direction (long axis); for linear sweeps also the sweep direction". Origin and +z
+    unchanged; existing code and configs already follow this (det_u = +x). Gil to confirm the wording.

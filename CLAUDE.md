@@ -1,6 +1,6 @@
 # CLAUDE.md — dts-recon
 
-Digital tomosynthesis reconstruction for a moving-source veterinary x-ray device (ViBo Health).
+Digital tomosynthesis reconstruction for the NextGen PANEL moving-source prototype: 2D source scan over a stationary detector; first use case veterinary dental.
 Full context, milestones and acceptance criteria: `docs/PROJECT_BRIEF.md`. Read it before starting work.
 
 ## Current phase
@@ -11,7 +11,7 @@ Pass A (simulation only). No real data exists yet. All geometry values in `confi
 
 - **Evidence first.** Report measured numbers and test results. Separate what was measured from what is inferred. When a result is uncertain, say so; don't round it up into a conclusion.
 - **Ground truth before claims.** A reconstruction method counts as working only when a simulated phantom with known ground truth shows it.
-- **Geometry convention is fixed** (brief §4.1: mm, origin at nominal detector center, +z toward source, +x sweep direction). Do not change it without an entry in `docs/decisions.md` and Gil's approval.
+- **Geometry convention is fixed** (brief §4.1: mm, origin at detector center, +z toward source, +x along the detector column direction). Do not change it without an entry in `docs/decisions.md` and Gil's approval.
 - **Engine isolation.** Only `src/dtsrecon/engines/` may import `tigre` or `leapct`.
 - **Placeholders stay labeled.** Any value without a confirmed source carries a `# PLACEHOLDER` comment or a `placeholder: true` YAML field.
 - **New dependencies:** ask before adding any beyond numpy, scipy, matplotlib, pyyaml, pydantic, tifffile, pydicom, napari, pytest, tigre, leapct, imageio (approved 2026-10-09: hard import of leapct's `leapctype.py`).
@@ -35,8 +35,9 @@ uv pip install --python .venv/bin/python -e '.[dev,leap]'    # Python 3.12 venv;
 third_party/leap/build_leap_mac.sh <build_dir>               # LEAP v1.26 CPU build (patched) into .venv
 pytest                                                        # CPU tests, ~1 s
 pytest -m gpu                                                 # GPU machine only
-dts plot-geometry configs/geometry_placeholder.yaml
-python scripts/m0_smoke.py; python scripts/m0_benchmark.py
+dts plot-geometry configs/geometry_dental.yaml
+python scripts/smoke_grid.py                                  # device (2D grid) smoke test
+python scripts/m0_smoke.py; python scripts/m0_benchmark.py   # linear-sweep comparison
 ```
 
 ## LEAP gotchas (measured in M0, see docs/decisions.md)
