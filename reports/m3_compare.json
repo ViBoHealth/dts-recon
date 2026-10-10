@@ -1,0 +1,61 @@
+{
+  "geometry": "configs/geometry_dental.yaml",
+  "binning": 8,
+  "voxel_mm": 1.0,
+  "volume_zyx": [
+    140,
+    100,
+    130
+  ],
+  "n_beads": 60,
+  "results": {
+    "S0 DTS-FBP radial": {
+      "time_s": 0.3167620839958545,
+      "max_abs_err_slices": 0.399121649047963,
+      "mean_abs_err_slices": 0.04950559079980969,
+      "n_nan": 0
+    },
+    "S0 DTS-FBP oriented": {
+      "time_s": 0.31434450001688674,
+      "max_abs_err_slices": 0.29438451556139,
+      "mean_abs_err_slices": 0.10626780847937489,
+      "n_nan": 0
+    },
+    "S0 OS-SART 10it/6sub": {
+      "time_s": 2.7747857909998856,
+      "max_abs_err_slices": 0.32634786409573735,
+      "mean_abs_err_slices": 0.03340870291813793,
+      "n_nan": 0
+    },
+    "S0 ASD-POCS 10it": {
+      "time_s": 4.708736791973934,
+      "max_abs_err_slices": 0.36700221374636044,
+      "mean_abs_err_slices": 0.07616423838309885,
+      "n_nan": 0
+    },
+    "S1 DTS-FBP radial": {
+      "time_s": 0.33215362500050105,
+      "max_abs_err_slices": 0.400252107590525,
+      "mean_abs_err_slices": 0.04026634469505647,
+      "n_nan": 0
+    },
+    "S1 DTS-FBP oriented": {
+      "time_s": 0.3325851659756154,
+      "max_abs_err_slices": 0.3341055909015438,
+      "mean_abs_err_slices": 0.08889819089971773,
+      "n_nan": 0
+    },
+    "S1 OS-SART 10it/6sub": {
+      "time_s": 2.9543923329911195,
+      "max_abs_err_slices": 0.34523774084695447,
+      "mean_abs_err_slices": 0.045623902376998635,
+      "n_nan": 0
+    },
+    "S1 ASD-POCS 10it": {
+      "time_s": 4.988514791999478,
+      "max_abs_err_slices": 0.249407115154753,
+      "mean_abs_err_slices": 0.06452156396778944,
+      "n_nan": 0
+    }
+  }
+}

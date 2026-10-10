@@ -1,0 +1,66 @@
+{
+  "scale": "medium_dog",
+  "voxel_mm": 0.8,
+  "data": "S2+S1",
+  "lesions": [
+    {
+      "method": "DTS-FBP radial",
+      "kind": "periapical_lesion",
+      "arch": "mandible_near",
+      "z_true": 36.903579715234095,
+      "z_found": 34.6,
+      "err_mm": -2.3035797152340933,
+      "err_slices": -2.8794746440426167
+    },
+    {
+      "method": "DTS-FBP radial",
+      "kind": "missing_tooth",
+      "arch": "mandible_far",
+      "z_true": 81.91646669007685,
+      "z_found": 81.0,
+      "err_mm": -0.9164666900768452,
+      "err_slices": -1.1455833625960565
+    },
+    {
+      "method": "OS-SART 8it/6sub",
+      "kind": "periapical_lesion",
+      "arch": "mandible_near",
+      "z_true": 36.903579715234095,
+      "z_found": 35.400000000000006,
+      "err_mm": -1.503579715234089,
+      "err_slices": -1.8794746440426113
+    },
+    {
+      "method": "OS-SART 8it/6sub",
+      "kind": "missing_tooth",
+      "arch": "mandible_far",
+      "z_true": 81.91646669007685,
+      "z_found": 82.60000000000001,
+      "err_mm": 0.6835333099231633,
+      "err_slices": 0.8544166374039541
+    },
+    {
+      "method": "ASD-POCS 8it",
+      "kind": "periapical_lesion",
+      "arch": "mandible_near",
+      "z_true": 36.903579715234095,
+      "z_found": 38.6,
+      "err_mm": 1.6964202847659067,
+      "err_slices": 2.1205253559573833
+    },
+    {
+      "method": "ASD-POCS 8it",
+      "kind": "missing_tooth",
+      "arch": "mandible_far",
+      "z_true": 81.91646669007685,
+      "z_found": 82.60000000000001,
+      "err_mm": 0.6835333099231633,
+      "err_slices": 0.8544166374039541
+    }
+  ],
+  "times_s": {
+    "DTS-FBP radial": 0.6665192500222474,
+    "OS-SART 8it/6sub": 6.209521207987564,
+    "ASD-POCS 8it": 11.334921749978093
+  }
+}

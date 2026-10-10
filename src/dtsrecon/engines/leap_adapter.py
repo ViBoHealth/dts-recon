@@ -127,36 +127,60 @@ class LeapEngine:
     def _os_sart_cached(self, g: np.ndarray, f: np.ndarray, n_iter: int, n_subsets: int) -> np.ndarray:
         # Mirrors leapctype.tomographicModels.SART (v1.26, numSubsets > 1, no mask, nonnegativity on),
         # step for step, so results match it exactly.
-        from leapctype import subsetParameters
-
-        lp = self.lp
-        if lp.verify_inputs(g, f) is False:
-            raise RuntimeError("LEAP rejected the SART inputs")
-        n_subsets = min(n_subsets, lp.get_numAngles())
-        P1 = lp.allocateData(g)
-        lp.project(P1, lp.allocateData(f, 1.0))
-        P1[P1 <= 0.0] = 1.0
-        subset_params = subsetParameters(lp, n_subsets)
-        g_subsets = lp.breakIntoSubsets(g, n_subsets)
-        P1_subsets = lp.breakIntoSubsets(P1, n_subsets)
-        Pstar1 = []
-        for m in range(n_subsets):
-            subset_params.setSubset(m)
-            Pstar1.append(lp.sensitivity(lp.allocateData(f)))
-        d = lp.allocateData(f)
-        try:
-            for _ in range(n_iter):
-                for m in range(n_subsets):
-                    subset_params.setSubset(m)
-                    Pd = lp.allocateData(g_subsets[m])
-                    lp.project(Pd, f)
-                    Pd = (g_subsets[m] - Pd) / P1_subsets[m]
-                    lp.backproject(Pd, d)
-                    f += 0.9 * d / Pstar1[m]
-                    f[f < 0.0] = 0.0
-        finally:
-            subset_params.setSubset(-1)
+        op = self.os_sart_operator(g, n_subsets)
+        for _ in range(n_iter):
+            op.step(f)
         return f
+
+    def os_sart_operator(self, g: np.ndarray, n_subsets: int) -> "OSSARTOperator":
+        """Reusable OS-SART data-consistency pass with cached P1 and per-subset sensitivities
+        (for algorithms that interleave SART passes with other steps, e.g. ASD-POCS)."""
+        return OSSARTOperator(self, np.ascontiguousarray(g, dtype=np.float32), n_subsets)
 
     def describe(self) -> str:
         return f"LEAP modular-beam: {self.geom.n_projections} proj, det {self.geom.n_rows}x{self.geom.n_cols}, vol {self.vol.shape}"
+
+
+class OSSARTOperator:
+    """One OS-SART pass = one update per subset, LEAP's update rule:
+    f += relax * P_m^T[(g_m - P_m f) / P_m 1] / P_m^T 1,  then f >= 0 (if nonneg)."""
+
+    def __init__(self, engine: LeapEngine, g: np.ndarray, n_subsets: int):
+        from leapctype import subsetParameters
+
+        lp = engine.lp
+        self.lp = lp
+        f_tmp = engine.allocate_volume()
+        if lp.verify_inputs(g, f_tmp) is False:
+            raise RuntimeError("LEAP rejected the SART inputs")
+        self.n_subsets = min(n_subsets, lp.get_numAngles())
+        P1 = lp.allocateData(g)
+        lp.project(P1, lp.allocateData(f_tmp, 1.0))
+        P1[P1 <= 0.0] = 1.0
+        self.subset_params = subsetParameters(lp, self.n_subsets)
+        self.g_subsets = lp.breakIntoSubsets(g, self.n_subsets)
+        self.P1_subsets = lp.breakIntoSubsets(P1, self.n_subsets)
+        self.Pstar1 = []
+        try:
+            for m in range(self.n_subsets):
+                self.subset_params.setSubset(m)
+                self.Pstar1.append(lp.sensitivity(lp.allocateData(f_tmp)))
+        finally:
+            self.subset_params.setSubset(-1)
+        self.d = lp.allocateData(f_tmp)
+
+    def step(self, f: np.ndarray, relax: float = 0.9, nonneg: bool = True) -> np.ndarray:
+        lp = self.lp
+        try:
+            for m in range(self.n_subsets):
+                self.subset_params.setSubset(m)
+                Pd = lp.allocateData(self.g_subsets[m])
+                lp.project(Pd, f)
+                Pd = (self.g_subsets[m] - Pd) / self.P1_subsets[m]
+                lp.backproject(Pd, self.d)
+                f += relax * self.d / self.Pstar1[m]
+                if nonneg:
+                    f[f < 0.0] = 0.0
+        finally:
+            self.subset_params.setSubset(-1)
+        return f

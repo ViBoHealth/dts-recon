@@ -110,3 +110,19 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     ~26–36 % vs S0 (enamel 0.107 -> 0.069 /mm); all DTS values are far below true mu for thin dense structures
     (limited angle + partial volume), so reconstructed values are not quantitative. Max S0 line integral 9.1
     (transmission ~1e-4: photon starvation with the placeholder I0) vs 6.1 for S2.
+21. **M3 reconstruction (2026-10-09).**
+    - LEAP's TV (`diffuse`, `TVcost`) is GPU-only in the CPU build ("GPU routines not included"), so LEAP's
+      ASDPOCS on the Mac silently degenerates to SART. We implement ASD-POCS (Sidky & Pan 2008) with a NumPy
+      TV (gradient checked by finite differences) and our cached OS-SART operator as the data step.
+    - DTS-FBP (`recon/dts_fbp.py`): cosine weight about each source's foot point; ramp (radial or oriented along
+      the source offset) with a low-frequency floor (dc), Hann apodization, optional slice-thickness filter;
+      LEAP backprojection / N. Output not calibrated to mu.
+    - Acceptance (brief §8, beads at correct depth ±1 slice): 60 steel beads in PMMA, dental 6x6 geometry,
+      1 mm voxels, S0 and S1: max error 0.25–0.40 slice for DTS-FBP (radial, oriented), OS-SART and ASD-POCS.
+      Out-of-plane spread between beads: ASD-POCS < OS-SART < FBP radial < FBP oriented (visual + z profiles).
+    - Dental (S2+S1, medium dog, 0.8 mm): the missing tooth is found at the far-jaw depth (|err| <= 0.9 mm) and
+      separated from the near-side tooth at the same (x, y); the small periapical lesion is found 1.5–2.3 mm off
+      (within its ~2.6 mm radius, but 2–3 slices) — a detectability/depth-resolution question for M4.
+    - Observed: DTS-FBP gain rises with height (identical beads 0.7 at z=35 vs 1.0 at z=125 mm): a depth-dependent
+      weighting to characterize and correct in M4.
+    - Depth metric windows are now in mm (a voxel-count window reached the next bead at coarse voxels).
