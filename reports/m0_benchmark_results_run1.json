@@ -1,0 +1,164 @@
+{
+  "cases": [
+    {
+      "case": "project",
+      "wall_s": 1.0416096249828115,
+      "cpu_s": 13.004225000000002,
+      "parallelism": 12.484739664550043,
+      "peak_rss_gb": 0.554713088,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "backproject",
+      "wall_s": 13.57540554201114,
+      "cpu_s": 137.155229,
+      "parallelism": 10.103214123184198,
+      "peak_rss_gb": 0.458244096,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "ramp+LEAP BP",
+      "wall_s": 14.324256291001802,
+      "cpu_s": 136.71204300000002,
+      "parallelism": 9.544093614541067,
+      "peak_rss_gb": 2.03956224,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "LEAP FBP",
+      "wall_s": 0.013062624988378957,
+      "cpu_s": 0.012934000000000334,
+      "parallelism": 0.9901532051564633,
+      "peak_rss_gb": 0.555024384,
+      "error": "RuntimeError('LEAP FBP returned failure for this geometry')",
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "OS-SART",
+      "n_iter": 1,
+      "subsets": 8,
+      "wall_s": 31.901196791004622,
+      "cpu_s": 310.685536,
+      "parallelism": 9.738993117888478,
+      "peak_rss_gb": 0.928284672,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "OS-SART",
+      "n_iter": 3,
+      "subsets": 8,
+      "wall_s": 84.51848158298526,
+      "cpu_s": 887.756182,
+      "parallelism": 10.503692983745198,
+      "peak_rss_gb": 0.928579584,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "SIRT",
+      "n_iter": 1,
+      "subsets": 1,
+      "wall_s": 26.9168085839774,
+      "cpu_s": 308.990573,
+      "parallelism": 11.479465406754457,
+      "peak_rss_gb": 0.8323072,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    },
+    {
+      "case": "SIRT",
+      "n_iter": 3,
+      "subsets": 1,
+      "wall_s": 50.370587416982744,
+      "cpu_s": 614.70386,
+      "parallelism": 12.20362698793441,
+      "peak_rss_gb": 0.832700416,
+      "error": null,
+      "detector": [
+        768,
+        768
+      ],
+      "n_proj": 41,
+      "volume": [
+        256,
+        256,
+        256
+      ]
+    }
+  ],
+  "summary": {
+    "os_sart_subsets": 8,
+    "os_sart_s_per_iter": 26.30864239599032,
+    "sirt_s_per_iter": 11.726889416502672,
+    "omp_get_num_procs_expected": 18,
+    "machine": "macOS-27.0.1-arm64-arm-64bit",
+    "python": "3.12.13"
+  }
+}

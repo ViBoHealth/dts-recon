@@ -1,0 +1,59 @@
+"""Parametric trajectory generators (stationary detector at the origin, normal +z)."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from .schema import ProjectionGeometry
+
+
+def _stationary_detector(n: int):
+    det_center = np.zeros((n, 3))
+    det_u = np.tile([1.0, 0.0, 0.0], (n, 1))  # columns along +x (sweep)
+    det_v = np.tile([0.0, 1.0, 0.0], (n, 1))  # rows along +y; u x v = +z
+    return det_center, det_u, det_v
+
+
+def sweep_angles_deg(n_projections: int, angular_range_deg: float) -> np.ndarray:
+    half = angular_range_deg / 2
+    return np.linspace(-half, half, n_projections)
+
+
+def linear_trajectory(
+    n_projections: int,
+    angular_range_deg: float,
+    source_to_detector_mm: float,
+    n_cols: int,
+    n_rows: int,
+    pixel_pitch_u: float,
+    pixel_pitch_v: float,
+) -> ProjectionGeometry:
+    """Source moves along +x at fixed height z = source_to_detector_mm.
+
+    Angles are measured at the origin (detector center) from the +z axis.
+    """
+    theta = np.deg2rad(sweep_angles_deg(n_projections, angular_range_deg))
+    h = source_to_detector_mm
+    src = np.stack([h * np.tan(theta), np.zeros_like(theta), np.full_like(theta, h)], axis=1)
+    det_center, det_u, det_v = _stationary_detector(n_projections)
+    return ProjectionGeometry(src, det_center, det_u, det_v, n_cols, n_rows, pixel_pitch_u, pixel_pitch_v)
+
+
+def arc_trajectory(
+    n_projections: int,
+    angular_range_deg: float,
+    source_to_detector_mm: float,
+    n_cols: int,
+    n_rows: int,
+    pixel_pitch_u: float,
+    pixel_pitch_v: float,
+    arc_center_mm=(0.0, 0.0, 0.0),
+) -> ProjectionGeometry:
+    """Source moves on a circle about the y axis through arc_center, passing through
+    (0, 0, source_to_detector_mm) at the central projection."""
+    theta = np.deg2rad(sweep_angles_deg(n_projections, angular_range_deg))
+    c = np.asarray(arc_center_mm, dtype=float)
+    r = source_to_detector_mm - c[2]
+    src = np.stack([c[0] + r * np.sin(theta), np.full_like(theta, c[1]), c[2] + r * np.cos(theta)], axis=1)
+    det_center, det_u, det_v = _stationary_detector(n_projections)
+    return ProjectionGeometry(src, det_center, det_u, det_v, n_cols, n_rows, pixel_pitch_u, pixel_pitch_v)

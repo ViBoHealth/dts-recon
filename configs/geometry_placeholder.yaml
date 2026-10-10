@@ -1,0 +1,45 @@
+# Provisional DTS geometry — ALL VALUES ARE PLACEHOLDERS
+# Convention (docs/PROJECT_BRIEF.md §4.1):
+#   units mm / degrees; origin = nominal detector front-face center;
+#   +z toward source (slices are constant-z planes); +x = sweep direction.
+placeholder: true
+version: 0.1
+
+detector:
+  n_cols: 3072            # PLACEHOLDER
+  n_rows: 3072            # PLACEHOLDER
+  pixel_pitch_u: 0.139    # mm, PLACEHOLDER
+  pixel_pitch_v: 0.139    # mm, PLACEHOLDER
+  binning: 4              # for Pass A studies; 768 x 768 effective
+
+trajectory:
+  mode: parametric        # parametric | explicit
+  type: linear            # linear | arc
+  motion: step_and_shoot  # step_and_shoot | continuous
+  n_projections: 41       # PLACEHOLDER
+  angular_range_deg: 30   # total sweep (±15°), PLACEHOLDER
+  source_to_detector_mm: 1000   # at central projection, PLACEHOLDER
+  # linear: source moves along +x at fixed height z = source_to_detector_mm
+  # arc:    source moves on a circle centered on arc_center about the y axis
+  arc_center_mm: [0.0, 0.0, 0.0]  # used only for type: arc
+  detector_moves: false
+
+object:
+  table_gap_mm: 20        # detector face to bottom of object, PLACEHOLDER
+  thickness_range_mm: [50, 300]   # PLACEHOLDER
+
+reconstruction_volume:
+  # z measured from detector face; slices every dz
+  z_range_mm: [20, 320]
+  dz_mm: 1.0
+  voxel_xy_mm: 0.46       # binned pitch 0.556 mm / magnification at mid-object (~1.2); recompute from geometry
+  extend_xy_fraction: 0.2 # padding for truncation handling
+
+# Explicit form (Pass B / calibration output) replaces `trajectory` with:
+# projections:
+#   - src: [x, y, z]
+#     det_center: [x, y, z]
+#     det_u: [ux, uy, uz]
+#     det_v: [vx, vy, vz]
+#     timestamp: 0.000
+#     exposure: {kvp: 80, mas: 1.0}

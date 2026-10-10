@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dtsrecon"
+version = "0.0.1"
+description = "Digital tomosynthesis reconstruction for a moving-source veterinary x-ray device"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "pyyaml",
+    "pydantic>=2",
+    "tifffile",
+]
+# leapct is not on PyPI; it is built from source (third_party/leap/build_leap_mac.sh).
+# tigre is installed on the GPU machine only.
+
+[project.optional-dependencies]
+dev = ["pytest"]
+dicom = ["pydicom"]
+# runtime deps of the leapct ctypes module (leapct itself: third_party/leap/build_leap_mac.sh)
+leap = ["imageio"]
+viz = ["napari"]
+
+[project.scripts]
+dts = "dtsrecon.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not gpu'"
+markers = [
+    "gpu: needs an NVIDIA GPU (TIGRE, full-resolution runs); run with `pytest -m gpu`",
+]
