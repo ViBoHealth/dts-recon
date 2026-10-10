@@ -11,8 +11,8 @@ H_i(f) = R_i(f) * A(f) * S_i(f):
 * S_i, slice-thickness filter: Hann in |f . n_i| with cutoff st * f_nyq (st >= 1: off). Lower st thickens
   slices and suppresses out-of-plane streaks along the scan direction.
 
-The backprojector's own weighting (LEAP Joseph adjoint: voxel footprint ~ magnification^2) plays the
-role of FDK's distance weight. Output is in arbitrary units (not calibrated to mu): DTS values are not
+The backprojector's own weighting leaves a gain proportional to magnification (measured); `depth_gain`
+divides it out. Output is in arbitrary units (not calibrated to mu): DTS values are not
 quantitative anyway (limited angle). The M0 stopgap (recon/simple_fbp.py) equals dc=0, apod=1, st=1,
 mode='radial' without cosine weighting.
 """
@@ -31,6 +31,8 @@ class DTSFBPParams:
     apod: float = 1.0  # Hann apodization cutoff, fraction of Nyquist
     st: float = 1.0  # slice-thickness filter cutoff along the source offset direction (>= 1: off)
     cosine_weight: bool = True
+    depth_gain: bool = True  # divide each slice by the mean magnification at its height (see dts_fbp)
+    coverage_norm: bool = True  # divide by the number of projections that see each voxel, not by N
     pad: int = 2
 
 
@@ -87,6 +89,32 @@ def filter_projections(geom, g: np.ndarray, p: DTSFBPParams | None = None) -> np
     return out
 
 
+def mean_magnification(geom, z: np.ndarray) -> np.ndarray:
+    """Mean over projections of h_i / (h_i - z): magnification at height z above a planar detector
+    (h_i: source height above detector i)."""
+    n = np.cross(geom.det_u, geom.det_v)
+    h = np.einsum("ij,ij->i", geom.src - geom.det_center, n)
+    return np.mean(h[:, None] / (h[:, None] - np.asarray(z)[None, :]), axis=0)
+
+
 def dts_fbp(engine, g: np.ndarray, params: DTSFBPParams | None = None) -> np.ndarray:
-    q = filter_projections(engine.geom, g, params)
-    return engine.backproject(q) / engine.geom.n_projections
+    """With depth_gain, slices are divided by the mean magnification at their height: measured on the
+    dental geometry, the uncorrected in-plane integral of identical beads grew in proportion to
+    magnification (+29 % from z = 32.5 to 132.5 mm, magnification +27 %). With coverage_norm, each voxel is
+    divided by the number of projections that see it (otherwise partly sampled voxels near the top of the
+    volume come out too low: -27 % for an off-axis bead at z = 132.5 mm)."""
+    p = params or DTSFBPParams()
+    q = filter_projections(engine.geom, g, p)
+    geom, vol = engine.geom, engine.vol
+    if p.coverage_norm:
+        from ..geometry.coverage import coverage_count
+
+        xs, ys = vol.axis("x"), vol.axis("y")
+        cnt = np.stack([coverage_count(geom, xs, ys, z) for z in vol.axis("z")]).astype(np.float32)
+        f = engine.backproject(q) / np.maximum(cnt, 1.0)
+        f[cnt == 0] = 0.0
+    else:
+        f = engine.backproject(q) / geom.n_projections
+    if p.depth_gain:
+        f /= mean_magnification(engine.geom, engine.vol.axis("z"))[:, None, None].astype(np.float32)
+    return f
