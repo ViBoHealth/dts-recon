@@ -14,7 +14,7 @@ Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine h
 | M2 | Analytic phantoms (IQ, dental, calibration), stages S0–S2 | Met (tests) | — |
 | M3 | DTS-FBP for 2D grids, OS-SART, ASD-POCS | Met: beads within ±1 slice in all methods | — |
 | M4 | Metrics, stages S3–S5, trade study (8 geometries × 3 methods × 2 phantoms), motion, truncation, slice-thickness filter, compute | Met, with no written report (Gil: none during early testing) | Dose-matched rerun deferred to grid optimization. RMSE/SSIM uninformative (item 23) |
-| M5 | Two-plane bead phantom, geometry estimator, sensitivity study, closed loop | Met. Tolerances use **placeholder limits** (≤ 10 % blur, ≤ 0.5 mm distortion; Gil: keep for now) | Final limits (Gil) |
+| M5 | Two-plane bead phantom, geometry estimator, sensitivity study, closed loop | Met. Limits set by Gil (2026-10-10): ≤ 10 % blur, ≤ 0.5 mm distortion (item 27) | Revisit once stage repeatability is known |
 | M6 | Raw format, mock detector, preprocessing, `dts` CLI, TIFF / DICOM export, napari viewer, user guide | End-to-end run works (item 26); **not yet run by someone other than the developer** | That run (`docs/USAGE.md`) |
 | M7 | — | — | Paused: bunker not available |
 | M8 | — | — | Optional, not started |
@@ -48,7 +48,6 @@ Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine h
 
 ## Waiting on Gil
 
-- Final blur and distortion limits for M5 (placeholders 10 % / 0.5 mm).
 - Someone to do the M6 acceptance run.
 - When to run the GPU session (TIGRE, GPU tests, M0/M1 remainder) and the TIGRE license check.
 - Whether to report the two LEAP CPU bugs upstream (decisions items 2 and 6).

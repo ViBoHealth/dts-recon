@@ -5,8 +5,8 @@ change vs no error, %), ghost ratio. Method as series (same colors / markers as 
 
 Tolerance: for each error type and method, the largest swept magnitude at which
   ASF FWHM and in-plane FWHM grow by <= X % and the max bead position error stays <= D mm.
-X (metric-loss limit) is Gil's to set (brief §8 M5); D (distortion limit) likewise. Both are PLACEHOLDERS
-here: X = 10 %, D = 0.5 mm (half a 1 mm voxel). Magnitudes are only resolved to the swept grid.
+X (metric-loss limit) and D (distortion limit) were set by Gil on 2026-10-10 (docs/decisions.md item 27):
+X = 10 %, D = 0.5 mm, the defaults below. Magnitudes are only resolved to the swept grid.
 
 Usage: python scripts/m5_plots.py [--x-pct 10] [--d-mm 0.5]
 """

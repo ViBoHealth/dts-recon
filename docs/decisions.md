@@ -194,7 +194,7 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
       in depth; scale 2 % -> 1.0–1.2 mm. Rotation and tilt *blur*: rotation 4° -> ghost ratio 1.19 (OS-SART) /
       0.93 (ASD-POCS) vs ~0.05 / 0.012; tilt 4° -> ASF +15–20 %. Random jitter up to 4 mm lateral / 8 mm height:
       < 5 % ASF, < 0.25 mm. Offset 5 mm also raises ASF 8–17 % (sub-voxel shifts at 1 mm voxels).
-      Tolerances at PLACEHOLDER limits (blur <= 10 %, distortion <= 0.5 mm; X and D are Gil's to set): offset 2 mm,
+      Tolerances at blur <= 10 %, distortion <= 0.5 mm (set by Gil 2026-10-10, item 27): offset 2 mm,
       SID 2 mm, scale 0.5 %, rotation 1°, tilt 2°, jitter >= 4 mm / >= 8 mm (end of sweep).
     - **Closed loop** (combined error): reconstructing with the estimated geometry gives the same metrics as the
       true geometry (all within 0.001 mm / 0.1 %); the nominal geometry gives 0.43–0.50 mm position errors and
@@ -242,3 +242,9 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
       Do not read single-run ASD-POCS lesion depths to better than a few mm; image review still decides.
     - Not done: a run by someone other than the developer (the M6 acceptance test) — needs Gil or a colleague
       to follow docs/USAGE.md.
+27. **M5 limits set (Gil, 2026-10-10):** metric loss X = 10 % (ASF and in-plane FWHM growth) and distortion
+    D = 0.5 mm (max bead position error), i.e. the values used in item 24 become final. Rationale: 0.5 mm is
+    about one voxel at 0.4–0.8 mm and supports measurements on the images (root length, lesion size, bone
+    level); 10 % is a common just-noticeable blur change. Calibration (<= 0.1 mm) is well inside both, so the
+    limits matter for a stage specification without calibration and for how often to recalibrate. Revisit
+    when stage repeatability is known (hardware team) or if image review says otherwise.
