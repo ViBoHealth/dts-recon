@@ -4,3 +4,6 @@ __pycache__/
 .pytest_cache/
 build/
 .DS_Store
+
+# large exported slice stacks (regenerate with scripts/export_stack.py)
+reports/stacks/
