@@ -2,7 +2,7 @@
 
 **Owner:** Gil Travish (ViBo Health)
 **Version:** 0.3 (2026-10-09) — device is the NextGen PANEL moving-source prototype: 2D source scan (not a linear sweep); first use case veterinary dental. M0 (Mac) results added.
-**Status:** Pass A (simulation), M0 Mac side done; GPU side of M0 not started
+**Status (2026-10-10):** Pass A (simulation). M0–M6 built on the Mac (LEAP CPU); M6 acceptance run by a second person pending; M7 paused (bunker not available); GPU side (TIGRE, M0/M1 remainder) not started. See `docs/STATUS.md`.
 
 **Hardware references** (commercial in confidence; not copied into this repo):
 - *Panel X-ray Prototype Requirements: Moving Source Digital Tomosynthesis System*, v2, July 2025 — `~/Documents/Projects/Panel/Hardware_Panel/Panel Prototype Hardware Requirements v2.pdf`
@@ -215,7 +215,7 @@ Approximate values from Gil (2026-10-09) unless marked; the hardware requirement
 | Engine bugs in our geometry (found in M0: LEAP CPU projector was half a voxel off for sources above the detector) | Projector, backprojector and adjoint tests against analytic geometry, kept in `pytest`; same tests on the GPU build |
 | Sparse 2D source grid produces discrete out-of-plane "ghost lattices" (seen in M0 simulation) | Study grid density and filter design in M4; include in ASF metric |
 | Tall objects only partly sampled when the source grid is wider than the detector | Report the fully sampled region per geometry; truncation handling (§6.4) |
-| Mac CPU too slow for iterative work at useful sizes | M0: FBP is fast; iterative ≈ 1 min/iteration at large study volumes (extrapolated). Move large sweeps to a rented GPU if needed |
+| Mac CPU too slow for iterative work at useful sizes | M4/M6 (measured): all study sweeps ran on the Mac; dental volume 850 x 600 x 265 at 0.4 mm: OS-SART 10 it 131 s, ASD-POCS 172 s (6.9 GB). Rented GPU only if volumes grow |
 | Simulation under-models scatter, lag, heel effect | Treat Pass A numbers as upper bounds; report stages used |
 | Over-tuning to one phantom | ≥ 2 phantom types; held-out case |
 | Interface drift with hardware | Single-owner interface spec |

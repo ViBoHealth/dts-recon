@@ -40,7 +40,7 @@ To make mock scans:
 
 | Option | Default | |
 |---|---|---|
-| `--method` | `os-sart` | `asd-pocs` (sharper in depth, slower, ~10x the memory); `dts-fbp` (fastest, weakest on wide low-contrast objects) |
+| `--method` | `os-sart` | `asd-pocs` (sharper in depth; ~1.3x the time and memory of OS-SART); `dts-fbp` (fastest, weakest on wide low-contrast objects) |
 | `--calibration` | the scan's, else encoders | geometry YAML from step 2 |
 | `--binning` | to ~0.4 mm pixels | detector binning before reconstruction |
 | `--voxel` | binned pixel size | cubic voxels (LEAP) |

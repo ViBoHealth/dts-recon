@@ -6,6 +6,7 @@ Full context, milestones and acceptance criteria: `docs/PROJECT_BRIEF.md`. Read 
 ## Current phase
 
 Pass A (simulation only). No real data exists yet. All geometry values in `configs/` are **placeholders**.
+M0–M6 built (Mac, LEAP); M7 paused (no bunker); GPU/TIGRE work not started. Summary: `docs/STATUS.md`.
 
 ## Working rules
 
@@ -31,9 +32,9 @@ Pass A (simulation only). No real data exists yet. All geometry values in `confi
 ## Commands
 
 ```
-uv pip install --python .venv/bin/python -e '.[dev,leap]'    # Python 3.12 venv; see README for LEAP build
+uv pip install --python .venv/bin/python -e '.[dev,leap,dicom,viz]'  # Python 3.12 venv; see README for LEAP build
 third_party/leap/build_leap_mac.sh <build_dir>               # LEAP v1.26 CPU build (patched) into .venv
-pytest                                                        # CPU tests, ~1 s
+pytest                                                        # CPU tests, ~20 s
 pytest -m gpu                                                 # GPU machine only
 dts plot-geometry configs/geometry_dental.yaml
 python scripts/smoke_grid.py                                  # device (2D grid) smoke test
@@ -41,6 +42,10 @@ python scripts/sim_dental.py                                  # dental phantom -
 python scripts/m3_compare.py                                  # M3: bead depths, DTS-FBP / OS-SART / ASD-POCS
 python scripts/m3_dental_lesions.py                           # M3: dental lesion depths (S2+S1)
 python scripts/m0_smoke.py; python scripts/m0_benchmark.py   # linear-sweep comparison
+python scripts/m4_study.py [--quick]; python scripts/m4_gaps.py   # M4 trade study and gap studies
+python scripts/m5_study.py [--quick]; python scripts/m5_plots.py  # M5 calibration + sensitivity
+scripts/m6_end_to_end.sh; python scripts/m6_check.py         # M6: mock raw -> calibrate -> recon (data/m6/)
+dts mock-scan | info | calibrate | recon | view               # the tool (docs/USAGE.md)
 ```
 
 ## LEAP gotchas (measured in M0, see docs/decisions.md)
