@@ -106,13 +106,57 @@ class LeapEngine:
             raise RuntimeError("LEAP FBP returned failure for this geometry")
         return f
 
-    def sart(self, g: np.ndarray, n_iter: int, n_subsets: int = 1, f0: np.ndarray | None = None) -> np.ndarray:
-        """SART with ordered subsets (n_subsets=1 is SIRT). Nonnegativity enforced."""
+    def sart(self, g: np.ndarray, n_iter: int, n_subsets: int = 1, f0: np.ndarray | None = None,
+             cache_sensitivity: bool = True) -> np.ndarray:
+        """SART with ordered subsets (n_subsets=1 is SIRT). Nonnegativity enforced.
+
+        With n_subsets > 1 and cache_sensitivity=True this runs LEAP's own OS-SART update
+        (leapctype.tomographicModels.SART) but computes each subset's sensitivity P*1 once instead
+        of every iteration (on the CPU each is a full backprojection). Output is identical to
+        lp.SART; memory cost is one extra volume per subset.
+        """
         f = self.allocate_volume() if f0 is None else np.ascontiguousarray(f0, dtype=np.float32).copy()
-        out = self.lp.SART(np.ascontiguousarray(g, dtype=np.float32), f, n_iter, n_subsets)
-        if out is None:
-            raise RuntimeError("LEAP SART returned failure")
-        return out
+        g = np.ascontiguousarray(g, dtype=np.float32)
+        if n_subsets <= 1 or not cache_sensitivity:
+            out = self.lp.SART(g, f, n_iter, n_subsets)
+            if out is None:
+                raise RuntimeError("LEAP SART returned failure")
+            return out
+        return self._os_sart_cached(g, f, n_iter, n_subsets)
+
+    def _os_sart_cached(self, g: np.ndarray, f: np.ndarray, n_iter: int, n_subsets: int) -> np.ndarray:
+        # Mirrors leapctype.tomographicModels.SART (v1.26, numSubsets > 1, no mask, nonnegativity on),
+        # step for step, so results match it exactly.
+        from leapctype import subsetParameters
+
+        lp = self.lp
+        if lp.verify_inputs(g, f) is False:
+            raise RuntimeError("LEAP rejected the SART inputs")
+        n_subsets = min(n_subsets, lp.get_numAngles())
+        P1 = lp.allocateData(g)
+        lp.project(P1, lp.allocateData(f, 1.0))
+        P1[P1 <= 0.0] = 1.0
+        subset_params = subsetParameters(lp, n_subsets)
+        g_subsets = lp.breakIntoSubsets(g, n_subsets)
+        P1_subsets = lp.breakIntoSubsets(P1, n_subsets)
+        Pstar1 = []
+        for m in range(n_subsets):
+            subset_params.setSubset(m)
+            Pstar1.append(lp.sensitivity(lp.allocateData(f)))
+        d = lp.allocateData(f)
+        try:
+            for _ in range(n_iter):
+                for m in range(n_subsets):
+                    subset_params.setSubset(m)
+                    Pd = lp.allocateData(g_subsets[m])
+                    lp.project(Pd, f)
+                    Pd = (g_subsets[m] - Pd) / P1_subsets[m]
+                    lp.backproject(Pd, d)
+                    f += 0.9 * d / Pstar1[m]
+                    f[f < 0.0] = 0.0
+        finally:
+            subset_params.setSubset(-1)
+        return f
 
     def describe(self) -> str:
         return f"LEAP modular-beam: {self.geom.n_projections} proj, det {self.geom.n_rows}x{self.geom.n_cols}, vol {self.vol.shape}"

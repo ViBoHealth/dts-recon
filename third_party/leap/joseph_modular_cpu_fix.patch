@@ -1,8 +1,40 @@
 diff --git a/src/projectors_Joseph_cpu.cpp b/src/projectors_Joseph_cpu.cpp
-index 6d6b88a..46b805f 100644
+index 6d6b88a..b80427b 100644
 --- a/src/projectors_Joseph_cpu.cpp
 +++ b/src/projectors_Joseph_cpu.cpp
-@@ -361,16 +361,77 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+@@ -81,19 +81,22 @@ bool project_Joseph_modular_cpu(float* g, float* f, parameters* params)
+     double z_end = double(params->numZ - 1) * double(params->voxelHeight) + z_0;
+ 
+     omp_set_num_threads(omp_get_num_procs());
+-    #pragma omp parallel for schedule(dynamic)
++    // [dts-recon patch] parallelize over (angle, row) pairs instead of angles only, so that
++    // projections with few angles (ordered-subset iterations) still use all threads.
++    // Each detector pixel is computed independently as before; results are unchanged.
++    #pragma omp parallel for schedule(dynamic) collapse(2)
+     for (int iphi = 0; iphi < params->numAngles; iphi++)
+     {
+-        float* sourcePos = &(params->sourcePositions[3 * iphi]);
+-        float* c = &(params->moduleCenters[3 * iphi]);
+-        float* u_vec = &(params->colVectors[3 * iphi]);
+-        float* v_vec = &(params->rowVectors[3 * iphi]);
+-
+-        float* aProj = &g[uint64(iphi)* uint64(params->numRows*params->numCols)];
+-        float3 p = make_float3(sourcePos[0], sourcePos[1], sourcePos[2]);
+-
+         for (int iRow = 0; iRow < params->numRows; iRow++)
+         {
++            float* sourcePos = &(params->sourcePositions[3 * iphi]);
++            float* c = &(params->moduleCenters[3 * iphi]);
++            float* u_vec = &(params->colVectors[3 * iphi]);
++            float* v_vec = &(params->rowVectors[3 * iphi]);
++
++            float* aProj = &g[uint64(iphi)* uint64(params->numRows*params->numCols)];
++            float3 p = make_float3(sourcePos[0], sourcePos[1], sourcePos[2]);
++
+             double v = double(params->pixelHeight) * double(iRow) + v_0;
+ 
+             float* aLine = &aProj[iRow*params->numCols];
+@@ -361,16 +364,77 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
      const int searchWidth_u = 1 + int(ceil(0.5f * params->voxelWidth / params->pixelWidth * fabs(D)));
      const int searchWidth_v = 1 + int(ceil(0.5f * params->voxelWidth / params->pixelHeight * fabs(D)));
  
@@ -84,7 +116,7 @@ index 6d6b88a..46b805f 100644
  
                  const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
                  const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
-@@ -391,12 +452,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+@@ -391,12 +455,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
      else if (fabs(r.y) >= fabs(r.z))
      {
          const float rayWeight = R / fabs(r.y);
@@ -101,7 +133,7 @@ index 6d6b88a..46b805f 100644
  
                  const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
                  const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
-@@ -417,12 +478,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+@@ -417,12 +481,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
      else
      {
          const float rayWeight = R / fabs(r.z);
@@ -118,7 +150,7 @@ index 6d6b88a..46b805f 100644
  
                  const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
                  const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
-@@ -570,8 +631,8 @@ float projectLine_Joseph(float* mu, parameters* params, float3 p, float3 dst)
+@@ -570,8 +634,8 @@ float projectLine_Joseph(float* mu, parameters* params, float3 p, float3 dst)
              val = tex3D_rev(mu, ix_start, iy_start, float(iz_start), params) *
                  (min((float(params->numZ) - half), ip.z) - (float(iz_start) + half));
  

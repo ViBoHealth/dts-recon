@@ -33,6 +33,8 @@ CASES = [
     ("LEAP FBP", {}),
     ("OS-SART", {"n_iter": 1, "subsets": OS_SUBSETS}),
     ("OS-SART", {"n_iter": 3, "subsets": OS_SUBSETS}),
+    ("OS-SART LEAP", {"n_iter": 1, "subsets": OS_SUBSETS}),
+    ("OS-SART LEAP", {"n_iter": 3, "subsets": OS_SUBSETS}),
     ("SIRT", {"n_iter": 1, "subsets": 1}),
     ("SIRT", {"n_iter": 3, "subsets": 1}),
 ]
@@ -65,6 +67,8 @@ def _case(name: str, kw: dict) -> dict:
             simple_fbp(eng, g)
         elif name == "LEAP FBP":
             eng.fbp(g)
+        elif name == "OS-SART LEAP":  # LEAP's own loop: recomputes subset sensitivities every iteration
+            eng.sart(g, kw["n_iter"], kw["subsets"], cache_sensitivity=False)
         else:
             eng.sart(g, kw["n_iter"], kw["subsets"])
     except Exception as exc:
@@ -100,6 +104,7 @@ def main() -> None:
     summary = {
         "os_sart_subsets": OS_SUBSETS,
         "os_sart_s_per_iter": per_iter("OS-SART"),
+        "os_sart_leap_uncached_s_per_iter": per_iter("OS-SART LEAP"),
         "sirt_s_per_iter": per_iter("SIRT"),
         "omp_get_num_procs_expected": os.cpu_count(),
         "machine": platform.platform(),

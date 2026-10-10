@@ -62,3 +62,10 @@ def test_projector_backprojector_adjoint(engine):
     lhs = float(np.dot(y.ravel().astype(float), y.ravel().astype(float)))
     rhs = float(np.dot(x.ravel().astype(float), engine.backproject(y).ravel().astype(float)))
     assert abs(lhs - rhs) / lhs < 1e-5
+
+
+def test_cached_os_sart_matches_leap(engine):
+    """Our OS-SART with cached subset sensitivities is bit-identical to LEAP's SART."""
+    truth = sphere_with_beads(VOL, 30.0, 3.0, BEADS).voxelize(VOL)
+    g = engine.project(truth)
+    assert np.array_equal(engine.sart(g, 2, 5), engine.sart(g, 2, 5, cache_sensitivity=False))

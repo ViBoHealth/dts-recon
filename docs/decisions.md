@@ -49,3 +49,11 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     is tilted toward the mid-sweep source; a column missing the bead center by a fraction of a voxel reads a
     wrong depth (up to ~1 slice seen). Earlier M0 "ramp+BP within ±0.32 slices" result was partly two
     half-voxel errors cancelling.
+12. **OS-SART overhead removed** (2026-10-09). Profiling LEAP's `SART` (256³, 8 subsets) showed two costs:
+    (a) the CPU modular projector parallelized over angles only, so a ~5-angle subset used ~5 of 18 threads —
+    fixed in `joseph_modular_cpu_fix.patch` (`collapse(2)` over angle × row; forward projections bit-identical
+    on 16 geometry/subset cases); (b) `SART` recomputes each subset's sensitivity (a full CPU backprojection)
+    every iteration — `LeapEngine.sart` now runs LEAP's update with per-subset sensitivities cached
+    (bit-identical to `lp.SART`, tested; `cache_sensitivity=False` falls back to LEAP's loop). Memory: one extra
+    volume per subset (+0.47 GB at 256³ / 8 subsets; ~5.7 GB at 768² × 300 — inferred). 256³ / 41 proj:
+    OS-SART 5.2–5.4 → 2.3–2.4 s/iter (= SIRT); LEAP's own loop with the threading fix alone: 3.9–4.2 s/iter.
