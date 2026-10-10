@@ -74,4 +74,4 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     PANEL moving-source prototype with a 2D source scan; first use case veterinary dental (brief §1, §11).
     §4.1 "+x = nominal sweep direction" no longer defines anything for a 2D grid, so +x is now "along the
     detector's column index direction (long axis); for linear sweeps also the sweep direction". Origin and +z
-    unchanged; existing code and configs already follow this (det_u = +x). Gil to confirm the wording.
+    unchanged; existing code and configs already follow this (det_u = +x). Wording confirmed by Gil, 2026-10-09.
