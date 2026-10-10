@@ -1,0 +1,36 @@
+# Vet dental DTS prototype geometry — APPROXIMATE / PLACEHOLDER values.
+# Source: Gil Travish, 2026-10-09 (SID, detector, pixel size, object height, gap; "approximate").
+# Grid layout/extent: Gil, 2026-10-09: "5 x 5 or 6 x 6 measurements covering a square of at least
+#   30 x 30 or even 40 x 40 cm (larger than the detector)". Default here: 6 x 6 over 400 x 400 mm.
+# Convention (docs/PROJECT_BRIEF.md §4.1): mm / degrees; origin = detector front-face center;
+#   +z toward source (slices are constant-z planes); +x along the detector's long (30 cm) axis.
+placeholder: true
+version: 0.2
+
+detector:                 # stationary ("detector never moves")
+  n_cols: 3000            # along x, 300 mm at 0.1 mm (approximate, Gil)
+  n_rows: 2000            # along y, 200 mm at 0.1 mm (approximate, Gil)
+  pixel_pitch_u: 0.1      # mm (approximate, Gil)
+  pixel_pitch_v: 0.1      # mm (approximate, Gil)
+  binning: 4              # study binning: 750 x 500 at 0.4 mm (PLACEHOLDER)
+
+trajectory:
+  mode: parametric
+  type: grid              # 2D source scan in the plane z = source_to_detector_mm
+  motion: step_and_shoot  # PLACEHOLDER
+  source_to_detector_mm: 500     # SID (approximate, Gil)
+  grid_shape: [6, 6]             # (nx, ny), approximate (Gil: 5x5 or 6x6)
+  n_projections: 36
+  grid_extent_mm: [400, 400]     # approximate (Gil: >= 300 x 300, maybe 400 x 400); spacing 80 mm
+                                 # -> ±21.8° per axis, 29.5° at the corners, seen from the detector center
+                                 # Points above z ≈ 167 mm are not seen by every source (20 cm detector side)
+  grid_order: serpentine         # PLACEHOLDER
+  detector_moves: false
+
+object:
+  table_gap_mm: 10        # detector face to bottom of object (approximate, Gil)
+  max_height_mm: 200      # target max height (approximate, Gil)
+
+reconstruction_volume:
+  z_range_mm: [10, 210]   # gap .. gap + max height
+  # LEAP requires cubic voxels (docs/decisions.md item 7); reconstruct cubic, resample in z.

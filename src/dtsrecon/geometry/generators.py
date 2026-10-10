@@ -57,3 +57,35 @@ def arc_trajectory(
     src = np.stack([c[0] + r * np.sin(theta), np.full_like(theta, c[1]), c[2] + r * np.cos(theta)], axis=1)
     det_center, det_u, det_v = _stationary_detector(n_projections)
     return ProjectionGeometry(src, det_center, det_u, det_v, n_cols, n_rows, pixel_pitch_u, pixel_pitch_v)
+
+
+def grid_source_positions(grid_shape, grid_extent_mm, source_to_detector_mm, order: str = "serpentine") -> np.ndarray:
+    """(N, 3) source positions on a rectangular grid in the plane z = source_to_detector_mm,
+    centered over the detector center. grid_shape = (nx, ny) points; grid_extent_mm = (ex, ey)
+    full extent between the outermost points. Acquisition order: rows of constant y, x fastest;
+    'serpentine' reverses every other row (minimal stage travel), 'raster' does not."""
+    nx, ny = grid_shape
+    ex, ey = grid_extent_mm
+    xs = np.linspace(-ex / 2, ex / 2, nx) if nx > 1 else np.zeros(1)
+    ys = np.linspace(-ey / 2, ey / 2, ny) if ny > 1 else np.zeros(1)
+    pts = []
+    for j, y in enumerate(ys):
+        row = xs[::-1] if (order == "serpentine" and j % 2 == 1) else xs
+        pts += [(x, y, source_to_detector_mm) for x in row]
+    return np.array(pts, dtype=float)
+
+
+def grid_trajectory(
+    grid_shape,
+    grid_extent_mm,
+    source_to_detector_mm: float,
+    n_cols: int,
+    n_rows: int,
+    pixel_pitch_u: float,
+    pixel_pitch_v: float,
+    order: str = "serpentine",
+) -> ProjectionGeometry:
+    """2D source scan: source on a grid in a plane parallel to the stationary detector."""
+    src = grid_source_positions(grid_shape, grid_extent_mm, source_to_detector_mm, order)
+    det_center, det_u, det_v = _stationary_detector(len(src))
+    return ProjectionGeometry(src, det_center, det_u, det_v, n_cols, n_rows, pixel_pitch_u, pixel_pitch_v)

@@ -35,17 +35,25 @@ def peak_z(profile: np.ndarray, vol: VolumeSpec) -> tuple[float, int]:
 
 def bead_centroid_z(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, z: float,
                     half_xy: int = 3, half_z: int = 12, level: float = 0.5) -> float:
-    """z (mm) of the intensity-weighted 3D centroid of the bead response: voxels within a window
-    around the true position whose value exceeds `level` x the window maximum.
-    Robust to the tilted out-of-plane blur of off-axis beads and to sub-voxel bead positions."""
+    """z (mm) of the intensity-weighted 3D centroid of the bead response: within a window around
+    the true position, the connected region above `level` x its peak that contains the bead's own
+    (x, y) column (nearest in z to the true depth if several do). Other beads inside the window are
+    excluded. Robust to the tilted out-of-plane blur of off-axis beads and to sub-voxel positions."""
+    from scipy import ndimage
+
     xs, ys, zs = vol.axis("x"), vol.axis("y"), vol.axis("z")
     ix, iy, iz = (int(np.argmin(np.abs(a - p))) for a, p in ((xs, x), (ys, y), (zs, z)))
-    sl = (slice(max(iz - half_z, 0), iz + half_z + 1), slice(max(iy - half_xy, 0), iy + half_xy + 1),
-          slice(max(ix - half_xy, 0), ix + half_xy + 1))
-    w = recon[sl].astype(float)
-    w = np.where(w >= level * w.max(), w, 0.0)
-    Z = zs[sl[0]][:, None, None]
-    return float((Z * w).sum() / w.sum())
+    z0, y0, x0 = max(iz - half_z, 0), max(iy - half_xy, 0), max(ix - half_xy, 0)
+    w = recon[z0: iz + half_z + 1, y0: iy + half_xy + 1, x0: ix + half_xy + 1].astype(float)
+    col = w[:, iy - y0, ix - x0]
+    k = int(np.argmax(col))  # peak along the bead's own column
+    labels, _ = ndimage.label(w >= level * col[k])
+    lab = labels[k, iy - y0, ix - x0]
+    if lab == 0:
+        return float("nan")
+    m = np.where(labels == lab, w, 0.0)
+    Z = zs[z0: z0 + w.shape[0]][:, None, None]
+    return float((Z * m).sum() / m.sum())
 
 
 def bead_depth_errors(recon: np.ndarray, vol: VolumeSpec, beads_xyz) -> list[dict]:

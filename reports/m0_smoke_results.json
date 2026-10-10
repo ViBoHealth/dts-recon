@@ -277,9 +277,9 @@
     ]
   },
   "times_s": {
-    "project": 0.013505791983334348,
-    "ramp+LEAP BP": 0.047580291982740164,
-    "OS-SART 10it/8sub": 0.864822457981063
+    "project": 0.010729458008427173,
+    "ramp+LEAP BP": 0.03959029199904762,
+    "OS-SART 10it/8sub": 0.3534999169933144
   },
   "errors": {
     "LEAP FBP": "RuntimeError('LEAP FBP returned failure for this geometry')"
@@ -464,8 +464,8 @@
         "x": 0.0,
         "y": 30.0,
         "z_true": 56.0,
-        "z_meas": 55.781627615325455,
-        "err_slices": -0.10918619233727256,
+        "z_meas": 55.95024449881718,
+        "err_slices": -0.024877750591411285,
         "z_peak": 55.28535693883896,
         "err_peak_slices": -0.35732153058052063,
         "peak_slice": 18

@@ -57,3 +57,16 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     (bit-identical to `lp.SART`, tested; `cache_sensitivity=False` falls back to LEAP's loop). Memory: one extra
     volume per subset (+0.47 GB at 256³ / 8 subsets; ~5.7 GB at 768² × 300 — inferred). 256³ / 41 proj:
     OS-SART 5.2–5.4 → 2.3–2.4 s/iter (= SIRT); LEAP's own loop with the threading fix alone: 3.9–4.2 s/iter.
+13. **Device geometry is a 2D source scan, not a linear sweep** (Gil, 2026-10-09). Use case: veterinary
+    dental. Approximate values: SID 500 mm, stationary 200 × 300 mm detector at 0.1 mm, object up to 200 mm
+    tall, ~10 mm above the detector; source on a 5 × 5 or 6 × 6 grid over ≥ 300 × 300 (maybe 400 × 400) mm.
+    New `trajectory.type: grid` (serpentine/raster order) and `configs/geometry_dental.yaml` (default 6 × 6 over
+    400 × 400 mm). The linear config is kept for comparison. Computed consequences: points above z ≈ 167 mm
+    are not seen by every source (20 cm detector side vs ±200 mm sources); a sparse source grid makes
+    out-of-plane objects appear as a lattice of discrete ghosts (seen in `scripts/smoke_grid.py`), not a
+    continuous blur — relevant to choosing grid density. Stopgap FBP for grids uses an isotropic 2D ramp.
+    Reference documents (commercial in confidence, not copied into the repo):
+    `~/Documents/Projects/Panel/Hardware_Panel/Panel Prototype Hardware Requirements v2.pdf`,
+    `.../Suggested Measurements for the Panel-ULIV Prototype.pdf`.
+14. **Depth metric uses the bead's own connected blob** (scipy.ndimage.label) so neighbouring beads inside
+    the window cannot bias the centroid; projection check skips (bead, projection) pairs off the detector edge.

@@ -16,23 +16,30 @@ def bead_centroid_errors(
     geom: ProjectionGeometry, engine, vol: VolumeSpec, beads: list[Ball], projections=None, half: int = 5
 ) -> dict:
     """Project each bead alone (no overlap, no background) and compare its intensity centroid
-    with geom.project_point at the bead center. Errors in detector pixels."""
+    with geom.project_point at the bead center. Errors in detector pixels. (bead, projection) pairs whose
+    measurement window is not fully on the detector are skipped and counted."""
     if projections is None:
         projections = (0, geom.n_projections // 2, geom.n_projections - 1)
-    rows = []
+    rows, skipped = [], 0
     for b in beads:
         g = engine.project(BallPhantom([b]).voxelize(vol))
         for i in projections:
             pc, pr = geom.project_point(i, b.center)
             c0, r0 = int(round(pc)), int(round(pr))
+            if not (half <= c0 < geom.n_cols - half and half <= r0 < geom.n_rows - half):
+                skipped += 1  # measurement window not fully on the detector
+                continue
             win = g[i, r0 - half: r0 + half + 1, c0 - half: c0 + half + 1].astype(float)
             rr, cc = np.mgrid[r0 - half: r0 + half + 1, c0 - half: c0 + half + 1]
             w = win.sum()
             mc, mr = (cc * win).sum() / w, (rr * win).sum() / w
             rows.append({"proj": int(i), "bead": list(b.center), "pred_col": pc, "meas_col": mc,
                          "pred_row": pr, "meas_row": mr, "d_col_px": mc - pc, "d_row_px": mr - pr})
+    if not rows:
+        raise ValueError("no bead projection fully inside the detector")
     d = np.array([[r["d_col_px"], r["d_row_px"]] for r in rows])
-    return {"max_abs_dcol_px": float(np.abs(d[:, 0]).max()), "max_abs_drow_px": float(np.abs(d[:, 1]).max()), "rows": rows}
+    return {"max_abs_dcol_px": float(np.abs(d[:, 0]).max()), "max_abs_drow_px": float(np.abs(d[:, 1]).max()),
+            "n_checked": len(rows), "n_skipped_edge": skipped, "rows": rows}
 
 
 def backprojected_point_offsets(

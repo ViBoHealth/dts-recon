@@ -69,3 +69,36 @@ def test_cached_os_sart_matches_leap(engine):
     truth = sphere_with_beads(VOL, 30.0, 3.0, BEADS).voxelize(VOL)
     g = engine.project(truth)
     assert np.array_equal(engine.sart(g, 2, 5), engine.sart(g, 2, 5, cache_sensitivity=False))
+
+
+DENTAL = CONFIG.parent / "geometry_dental.yaml"
+GRID_VOL = VolumeSpec.from_z_range(32, 24, 32, voxel_xy=6.25, z_min=10.0, dz=6.25)
+
+
+@pytest.fixture(scope="module")
+def grid_engine():
+    return leap_adapter.LeapEngine(load_geometry(DENTAL, binning=40), GRID_VOL)
+
+
+def _grid_points():
+    # well separated, and below z ≈ 167 mm so every source position sees them
+    xs, ys, zs = GRID_VOL.axis("x"), GRID_VOL.axis("y"), GRID_VOL.axis("z")
+    return [(xs[8], ys[17], zs[3]), (xs[16], ys[11], zs[13]), (xs[22], ys[6], zs[23])]
+
+
+def test_grid_projection_and_backprojection_geometry(grid_engine):
+    """2D source grid (dental config): projector < 0.1 px, backprojector < 0.1 voxel."""
+    pts = _grid_points()
+    res = bead_centroid_errors(grid_engine.geom, grid_engine, GRID_VOL, [Ball(p, 6.0, 1.0) for p in pts],
+                               projections=range(grid_engine.geom.n_projections))
+    assert max(res["max_abs_dcol_px"], res["max_abs_drow_px"]) < 0.1
+    assert res["n_checked"] >= 0.8 * len(pts) * grid_engine.geom.n_projections
+    assert np.abs(backprojected_point_offsets(grid_engine.geom, grid_engine, GRID_VOL, pts)).max() < 0.1
+
+
+def test_grid_os_sart_bead_depths(grid_engine):
+    pts = _grid_points()
+    truth = sphere_with_beads(GRID_VOL, 25.0, 6.0, pts).voxelize(GRID_VOL)
+    rec = grid_engine.sart(grid_engine.project(truth), n_iter=5, n_subsets=5)
+    for row in bead_depth_errors(rec, GRID_VOL, pts):
+        assert abs(row["err_slices"]) <= 1.0, row

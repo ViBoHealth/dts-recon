@@ -47,3 +47,18 @@ def test_volume_axes():
     assert v.axis("z")[0] == pytest.approx(20.0)
     assert v.axis("z")[-1] == pytest.approx(28.0)
     assert v.axis("x").tolist() == [-1.5, -0.5, 0.5, 1.5]
+
+
+DENTAL = CONFIG.parent / "geometry_dental.yaml"
+
+
+def test_dental_grid_config():
+    g = load_geometry(DENTAL)
+    assert g.n_projections == 36
+    assert (g.n_cols, g.n_rows) == (750, 500)  # 3000 x 2000 at 0.1 mm, binning 4
+    assert np.allclose(g.src[:, 2], 500.0)
+    # 6 x 6 grid over 400 x 400 mm, serpentine: second row runs in -x
+    assert g.src[0, :2].tolist() == [-200.0, -200.0]
+    assert g.src[5, :2].tolist() == [200.0, -200.0]
+    assert g.src[6, 0] == 200.0 and g.src[11, 0] == -200.0
+    assert sorted(set(np.round(g.src[:, 1], 6))) == pytest.approx(np.linspace(-200, 200, 6))
