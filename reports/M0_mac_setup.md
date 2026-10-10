@@ -115,7 +115,7 @@ The volume is 256³ cubic 0.46 mm voxels (118 mm cube). Each case runs in a fres
 
 ## 7. Open items
 
-1. Decide how to reconstruct with non-cubic voxels (LEAP forces cubic).
+1. ~~Non-cubic voxels~~ — resolved: reconstruct cubic, resample in z (docs/decisions.md item 7). Resampling step not yet implemented.
 2. Find the root cause of LEAP's −0.5 voxel offset. Possibly report it upstream together with the CPU build bug (needs Gil's OK; not filed).
 3. Build the NumPy reference projector and the full round-trip test (M1). The current check uses single analytic points.
 4. Re-run the benchmark on an idle machine. Profile backprojection and OS-SART subset overhead. Measure larger volumes.
