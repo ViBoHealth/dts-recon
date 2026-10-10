@@ -1,0 +1,21 @@
+# X-ray source: NSI / Rigaku M237 X-ray Monoblock.
+# Source: https://rigaku.com/products/nsi/standard-xray-sources/m237 (read 2026-10-09).
+# Values not stated on that page are null and must come from NSI/Rigaku (spectrum, focal spot, window).
+model: M237
+kv_range: [35, 70]          # standard; custom 15-80 kV available
+power_max_w: 10
+current_range_ua: [5, 200]
+target:
+  type: transmission
+  material: null            # one of Au, Ag, Rh, W — TBD (Gil)
+  thickness_um: null        # not stated
+window:
+  material: Be
+  thickness_mm: null        # not stated
+added_filtration: []        # e.g. [{material: Al, thickness_mm: 1.0}] — TBD
+focal_spot_mm: null         # not stated; needed for S4 blur
+depth_to_focal_spot_mm: 2.4 # stated
+cone_angle_deg: 110         # full width
+cathode: tungsten filament
+hv_polarity: grounded anode
+spectrum: null              # request measured spectrum from NSI/Rigaku at the dental kV

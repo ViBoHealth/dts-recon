@@ -200,7 +200,8 @@ Approximate values from Gil (2026-10-09) unless marked; the hardware requirement
 | Object height | up to 200 mm | Gil (approximate) |
 | Detector | 300 × 200 mm, 0.1 mm pixels (3000 × 2000); study binning 4 → 0.4 mm | Gil (approximate); binning is a placeholder |
 | Motion mode | Step-and-shoot (also study continuous) | placeholder |
-| Source | 60–120 kV, 10 W, field emission, spot < 1 mm (2–3 mm minimum spec), ~90° cone | requirements doc |
+| Source (selected) | NSI / Rigaku **M237** monoblock: 35–70 kV (custom 15–80), 10 W max, 5–200 µA, **transmission** target (Au, Ag, Rh or W — which one TBD), Be window (thickness not stated), 110° cone, tungsten-filament cathode, grounded anode, air cooled, < 700 g. Focal spot size and spectrum not stated | rigaku.com product page, read 2026-10-09 |
+| Source (requirements) | 60–120 kV, 10 W, field emission, spot < 1 mm (2–3 mm minimum spec), ~90° cone | requirements doc |
 | Detector type | CMOS flat panel, 14–16 bit, ≥ 10 fps, full scan < 30 s | requirements doc |
 | kVp for dental | TBD | — |
 | Clinical tasks | Dental: tooth roots, periodontal bone, fractures (to be confirmed) | placeholder |
