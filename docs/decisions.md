@@ -84,3 +84,17 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     plus an independent ray-marching voxel projector. LEAP vs reference: max 0.068 px (dental grid) and
     0.036 px (linear) with beads ~9+ px across. Small sharp beads (~5 px) show up to ~0.11 px from pixel-sampling
     bias of the centroid estimator (shown to shrink with bead size and not with voxel size).
+18. **M2 simulator design (2026-10-09).** Phantoms are ordered lists of analytic shapes (ellipsoid, box, finite
+    cylinder; later shape wins) with materials. The forward model works in per-material path lengths
+    (exact analytic route for reference; voxel-fraction route projected by the engine for speed), so S2
+    (polyenergetic) only changes the last step. S0/S1 use single-energy PLACEHOLDER attenuation values
+    (`simulate/materials.py`, ~60 keV, not tabulated data) and PLACEHOLDER noise (I0 1e4 counts/pixel,
+    electronic noise 5 counts rms). Acceptance measured: per-material route vs projecting the mu-volume agrees
+    to 5e-7–1e-6 relative (float precision); voxel vs exact route converges with voxel size (1.6 % -> 0.7 %
+    at 1.0 -> 0.5 mm); S1 mean and variance match small-noise theory within 0–0.8 % at >= ~400 counts and
+    deviate (4–260 %) at low counts, as expected (approximation + clipping before the log).
+19. **Dental phantom** (`phantoms/dental.py`): lateral head on the detector, near/far jaw halves at different
+    depths, 5 teeth per jaw quarter (enamel, dentin, pulp, ligament space, roots in cortical/trabecular bone),
+    cranium shell, nasal air; scales cat / small dog / medium dog / large dog. Anatomy is PLACEHOLDER. By
+    default asymmetric: a periapical lesion (near mandible, tooth 2) and a missing tooth with empty socket
+    (far mandible, tooth 3), recorded as ground truth — targets for M3/M4.

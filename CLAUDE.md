@@ -37,6 +37,7 @@ pytest                                                        # CPU tests, ~1 s
 pytest -m gpu                                                 # GPU machine only
 dts plot-geometry configs/geometry_dental.yaml
 python scripts/smoke_grid.py                                  # device (2D grid) smoke test
+python scripts/sim_dental.py                                  # dental phantom -> S0/S1 -> FBP + OS-SART
 python scripts/m0_smoke.py; python scripts/m0_benchmark.py   # linear-sweep comparison
 ```
 

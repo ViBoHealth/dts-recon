@@ -55,3 +55,66 @@ def sphere_with_beads(
     balls = [Ball(tuple(vol.center), sphere_radius, sphere_mu)]
     balls += [Ball(tuple(p), bead_radius, bead_mu) for p in bead_xyz]
     return BallPhantom(balls)
+
+
+# --- Material-based geometric phantoms (brief §5.1), built from analytic primitives -------------------
+# Positions are in mm in the brief §4.1 frame; z0 is the height of the object's base above the detector.
+
+def _P():
+    from .primitives import Box, Cylinder, Ellipsoid, Phantom, rotation  # local import: avoid a cycle
+    return Box, Cylinder, Ellipsoid, Phantom, rotation
+
+
+def bead_grid(spacing: float = 20.0, n: tuple[int, int, int] = (5, 5, 5), z0: float = 20.0,
+              radius: float = 0.5, material: str = "steel", background: str | None = "pmma"):
+    """n[0] x n[1] x n[2] beads on a regular grid, optionally inside a background block."""
+    Box, Cylinder, Ellipsoid, Phantom, _ = _P()
+    xs = (np.arange(n[0]) - (n[0] - 1) / 2) * spacing
+    ys = (np.arange(n[1]) - (n[1] - 1) / 2) * spacing
+    zs = z0 + spacing / 2 + np.arange(n[2]) * spacing
+    shapes = []
+    if background:
+        shapes.append(Box(background, (0.0, 0.0, z0 + n[2] * spacing / 2), None,
+                          (n[0] * spacing / 2, n[1] * spacing / 2, n[2] * spacing / 2)))
+    shapes += [Ellipsoid(material, (x, y, z), None, (radius,) * 3) for z in zs for y in ys for x in xs]
+    return Phantom(shapes, "bead_grid")
+
+
+def slab_stack(z_levels=(15.0, 35.0, 55.0, 75.0), thickness: float = 2.0, size: float = 60.0,
+               material: str = "aluminum", background: str | None = "pmma", offset_step: float = 12.0):
+    """Thin slabs at known depths, each shifted in x so they overlap only partly (depth separation)."""
+    Box, _, _, Phantom, _ = _P()
+    top = max(z_levels) + thickness
+    shapes = [Box(background, (0.0, 0.0, top / 2 + 2.5), None, (size, size / 2, top / 2 + 2.5))] if background else []
+    for k, z in enumerate(z_levels):
+        x = (k - (len(z_levels) - 1) / 2) * offset_step
+        shapes.append(Box(material, (x, 0.0, z), None, (size / 3, size / 4, thickness / 2)))
+    return Phantom(shapes, "slab_stack")
+
+
+def wire(z: float = 40.0, radius: float = 0.1, length: float = 80.0, angle_deg: float = 30.0, material: str = "steel"):
+    """Thin straight wire in a plane of constant z, at angle_deg to +x."""
+    _, Cylinder, _, Phantom, rotation = _P()
+    R = rotation("z", angle_deg) @ rotation("y", 90)  # local z (axis) -> along x, then rotate in-plane
+    return Phantom([Cylinder(material, (0.0, 0.0, z), R, radius, length / 2)], "wire")
+
+
+def edge_disc(z: float = 40.0, radius: float = 20.0, thickness: float = 1.0, tilt_deg: float = 3.0,
+              material: str = "aluminum"):
+    """Thin disc parallel to the detector, slightly rotated in-plane (slanted edge for in-plane MTF)."""
+    _, Cylinder, _, Phantom, rotation = _P()
+    return Phantom([Cylinder(material, (0.0, 0.0, z), rotation("z", tilt_deg), radius, thickness / 2)], "edge_disc")
+
+
+def low_contrast_discs(z: float = 40.0, radii=(2.0, 3.0, 5.0, 8.0), contrasts=("fat", "pmma"),
+                       thickness: float = 4.0, background: str = "soft_tissue", block_half=(60.0, 40.0, 20.0)):
+    """Discs of low-contrast materials inside a background block, one row per material."""
+    Box, Cylinder, _, Phantom, _ = _P()
+    shapes = [Box(background, (0.0, 0.0, z), None, block_half)]
+    for j, mat in enumerate(contrasts):
+        y = (j - (len(contrasts) - 1) / 2) * 25.0
+        x = -block_half[0] + 12.0
+        for r in radii:
+            shapes.append(Cylinder(mat, (x + r, y, z), None, r, thickness / 2))
+            x += 2 * r + 8.0
+    return Phantom(shapes, "low_contrast_discs")
