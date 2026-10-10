@@ -175,3 +175,31 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     - **RMSE / SSIM** (`metrics.iq.fidelity`, affine-fitted to truth): implemented, but uninformative on these
       phantoms (rmse_rel 0.8–1.0, SSIM 0.95–0.99 on IQ planes, dominated by uniform PMMA that DTS cannot
       reproduce), as the brief warned. Reported, not used for decisions.
+24. **M5 geometry calibration and sensitivity (2026-10-10)** — `scripts/m5_study.py`, `scripts/m5_plots.py`, results
+    `reports/m5/{calibration,sensitivity,closed_loop,tolerance}.csv`, `sensitivity.png`. All physics PLACEHOLDER.
+    - **Method.** Two-plane steel-bead phantom (`phantoms/calibration.py`; beads r = 1 mm at z = 10 and 120 mm,
+      6 + 13 beads, min shadow gap 55 px) scanned offline; centroids measured on 0.1 mm windows; least squares
+      for every source position (3N) + phantom pose (6), sparse Jacobian, two passes (wide then tight search
+      windows). Detector = world frame, so all errors are source errors. Assumes a repeatable stage (the scan
+      calibrates the stage, not each patient exam).
+    - **Accuracy** (combined error: 7.7 mm worst source uncalibrated). After calibration, 6x6/400, rms x/y/z:
+      0.022/0.035/0.068 mm at I0 1e3; 0.011/0.010/0.032 at 1e4; 0.002/0.002/0.007 at 1e5 (max 3D 0.18 / 0.08 /
+      0.02 mm). 5x5/400 and 6x6/300 similar. Predicted standard errors match the actual errors (usable as a QA
+      check on real scans). ~70 s on CPU.
+    - **The phantom's own metrology is the limit, not noise.** Bead-position errors σ 0.02 / 0.05 / 0.1 mm give
+      source rms x 0.14 / 0.36 / 0.71 mm (max 3D 0.3 / 0.6 / 1.2 mm): ~7x amplification (plane separation 110
+      mm vs SID 500). Recommendation: CMM-measured phantom (~0.02 mm), rather than also estimating bead positions.
+    - **Sensitivity** (one error at a time, IQ phantom, beads at 30–70 mm, 1 mm voxels, nominal-geometry recon).
+      Offset / SID / scale mainly *distort* (shift targets): offset 10 mm -> 1.2–1.4 mm; SID 20 mm -> 2.6–2.9 mm
+      in depth; scale 2 % -> 1.0–1.2 mm. Rotation and tilt *blur*: rotation 4° -> ghost ratio 1.19 (OS-SART) /
+      0.93 (ASD-POCS) vs ~0.05 / 0.012; tilt 4° -> ASF +15–20 %. Random jitter up to 4 mm lateral / 8 mm height:
+      < 5 % ASF, < 0.25 mm. Offset 5 mm also raises ASF 8–17 % (sub-voxel shifts at 1 mm voxels).
+      Tolerances at PLACEHOLDER limits (blur <= 10 %, distortion <= 0.5 mm; X and D are Gil's to set): offset 2 mm,
+      SID 2 mm, scale 0.5 %, rotation 1°, tilt 2°, jitter >= 4 mm / >= 8 mm (end of sweep).
+    - **Closed loop** (combined error): reconstructing with the estimated geometry gives the same metrics as the
+      true geometry (all within 0.001 mm / 0.1 %); the nominal geometry gives 0.43–0.50 mm position errors and
+      OS-SART ghost ratio 0.096 vs 0.053.
+    - **Caveats.** Distortion and blur scale ~h/(S−h): at 160 mm the effects are ~2.9x those at 70 mm, so the
+      tolerances above are loose for tall objects. Finer voxels will expose smaller errors. Calibration
+      accuracy (≤ 0.1 mm) is well inside every tolerance either way, so calibrating removes the issue, given a
+      repeatable stage and a measured phantom.

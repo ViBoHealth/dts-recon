@@ -59,6 +59,27 @@ def bead_centroid_z(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, z: f
     return float((Z * m).sum() / m.sum())
 
 
+def bead_centroid_xyz(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, z: float,
+                      half_xy_mm: float = 8.0, half_z_mm: float = 12.0, level: float = 0.5) -> tuple[float, float, float]:
+    """(x, y, z) mm of the intensity-weighted centroid of the connected half-max region around the window's
+    maximum. For beads that may have moved (geometry errors -> distortion), so unlike bead_centroid_z it
+    does not assume the response is in the bead's true column. Keep the window free of other beads."""
+    from scipy import ndimage
+
+    hx = max(1, int(round(half_xy_mm / vol.voxel_xy)))
+    hz = max(1, int(round(half_z_mm / vol.dz)))
+    xs, ys, zs = vol.axis("x"), vol.axis("y"), vol.axis("z")
+    ix, iy, iz = (int(np.argmin(np.abs(a - p))) for a, p in ((xs, x), (ys, y), (zs, z)))
+    z0, y0, x0 = max(iz - hz, 0), max(iy - hx, 0), max(ix - hx, 0)
+    w = recon[z0: iz + hz + 1, y0: iy + hx + 1, x0: ix + hx + 1].astype(float)
+    k = np.unravel_index(np.argmax(w), w.shape)
+    labels, _ = ndimage.label(w >= level * w[k])
+    m = np.where(labels == labels[k], w, 0.0)
+    Z, Y, X = np.meshgrid(zs[z0: z0 + w.shape[0]], ys[y0: y0 + w.shape[1]], xs[x0: x0 + w.shape[2]], indexing="ij")
+    t = m.sum()
+    return float((X * m).sum() / t), float((Y * m).sum() / t), float((Z * m).sum() / t)
+
+
 def bead_depth_errors(recon: np.ndarray, vol: VolumeSpec, beads_xyz, half_z_mm: float = 12.0) -> list[dict]:
     """For each true bead (x, y, z): measured depth and the error in slices.
     z_meas: half-max 3D centroid (primary). z_peak: peak of the windowed-max z profile within ±half_z_mm

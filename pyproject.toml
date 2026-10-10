@@ -36,5 +36,6 @@ where = ["src"]
 testpaths = ["tests"]
 addopts = "-m 'not gpu'"
 markers = [
+    "slow: CPU test taking more than ~10 s",
     "gpu: needs an NVIDIA GPU (TIGRE, full-resolution runs); run with `pytest -m gpu`",
 ]

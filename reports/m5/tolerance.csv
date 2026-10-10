@@ -1,0 +1,22 @@
+error,unit,method,blur_tol_(<= 10 %),distortion_tol_(<= 0.5 mm)
+jitter_xy,mm rms,DTS-FBP,>= 4,>= 4
+jitter_xy,mm rms,OS-SART,>= 4,>= 4
+jitter_xy,mm rms,ASD-POCS,>= 4,>= 4
+jitter_z,mm rms,DTS-FBP,>= 8,>= 8
+jitter_z,mm rms,OS-SART,>= 8,>= 8
+jitter_z,mm rms,ASD-POCS,>= 8,>= 8
+offset_xy,mm,DTS-FBP,2,2
+offset_xy,mm,OS-SART,2,2
+offset_xy,mm,ASD-POCS,>= 10,2
+sid,mm,DTS-FBP,>= 20,2
+sid,mm,OS-SART,>= 20,2
+sid,mm,ASD-POCS,>= 20,2
+scale,%,DTS-FBP,>= 2,1
+scale,%,OS-SART,>= 2,0.5
+scale,%,ASD-POCS,>= 2,0.5
+rotation,deg,DTS-FBP,2,>= 4
+rotation,deg,OS-SART,1,>= 4
+rotation,deg,ASD-POCS,1,>= 4
+tilt,deg,DTS-FBP,2,>= 4
+tilt,deg,OS-SART,2,>= 4
+tilt,deg,ASD-POCS,2,>= 4
