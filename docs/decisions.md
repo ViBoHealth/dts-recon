@@ -75,3 +75,12 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     §4.1 "+x = nominal sweep direction" no longer defines anything for a 2D grid, so +x is now "along the
     detector's column index direction (long axis); for linear sweeps also the sweep direction". Origin and +z
     unchanged; existing code and configs already follow this (det_u = +x). Wording confirmed by Gil, 2026-10-09.
+16. **M1 geometry I/O (2026-10-09).** Explicit geometry in YAML (`projections:`) or CSV (`projections_file:`):
+    columns `src_x, src_y, src_z` required; detector pose columns optional (default: stationary nominal
+    detector); `timestamp`, `kvp`, `ma`, `ms` optional. `save_explicit` archives any geometry exactly. This
+    CSV layout is **our proposal only** — the real encoder-log format belongs in the hardware interface spec
+    (brief §10), which has a single owner. Example: `configs/examples/`.
+17. **Round-trip test (brief §4.3) implemented against an exact analytic reference** (sphere line integrals),
+    plus an independent ray-marching voxel projector. LEAP vs reference: max 0.068 px (dental grid) and
+    0.036 px (linear) with beads ~9+ px across. Small sharp beads (~5 px) show up to ~0.11 px from pixel-sampling
+    bias of the centroid estimator (shown to shrink with bead size and not with voxel size).

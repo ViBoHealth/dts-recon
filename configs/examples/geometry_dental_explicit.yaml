@@ -1,0 +1,17 @@
+# EXAMPLE of explicit geometry (Pass B path): per-projection source positions from a CSV
+# (encoder-log style). Detector columns omitted -> stationary nominal detector at the origin.
+# Positions, timestamps and exposure values are the nominal dental grid, PLACEHOLDER; not measured.
+placeholder: true
+version: explicit-1
+detector:
+  n_cols: 3000
+  n_rows: 2000
+  pixel_pitch_u: 0.1
+  pixel_pitch_v: 0.1
+  binning: 4
+trajectory:
+  mode: explicit
+  projections_file: dental_grid_positions.csv   # relative to this file
+object:
+  table_gap_mm: 10
+  max_height_mm: 200

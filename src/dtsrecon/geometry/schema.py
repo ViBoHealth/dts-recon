@@ -28,6 +28,8 @@ class ProjectionGeometry:
     pixel_pitch_u: float
     pixel_pitch_v: float
     placeholder: bool = True
+    timestamps: np.ndarray | None = None  # (N,) seconds, optional
+    exposures: list[dict] | None = None  # per projection, e.g. {"kvp": 70, "ma": 0.2, "ms": 100}, optional
 
     @property
     def n_projections(self) -> int:
@@ -55,6 +57,10 @@ class ProjectionGeometry:
             raise GeometryError("source is not on the +normal (det_u x det_v) side of the detector")
         if min(self.n_cols, self.n_rows) < 1 or min(self.pixel_pitch_u, self.pixel_pitch_v) <= 0:
             raise GeometryError("detector size and pitch must be positive")
+        if self.timestamps is not None and np.shape(self.timestamps) != (n,):
+            raise GeometryError(f"timestamps has shape {np.shape(self.timestamps)}, expected ({n},)")
+        if self.exposures is not None and len(self.exposures) != n:
+            raise GeometryError(f"{len(self.exposures)} exposures for {n} projections")
 
     def project_point(self, i: int, xyz) -> tuple[float, float]:
         """Analytic (col, row) pixel coordinates where the ray src_i -> xyz meets detector i.
