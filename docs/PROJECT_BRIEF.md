@@ -21,7 +21,7 @@ The tool must be ready when bunker (x-ray) access becomes available. The hardwar
 **Pass A — simulation (now).** Run the full pipeline on simulated phantoms with placeholder geometry: geometry model, simulator, reconstruction, metrics, calibration, I/O and tool. Pass A produces:
 
 1. A validated reconstruction package.
-2. Trade-study results that feed back into hardware design (angular range, number of projections, motion mode).
+2. Trade-study results that feed back into hardware design (angular range, number of projections).
 3. Requirements for the hardware team: geometry accuracy tolerance, required per-frame metadata.
 4. A bunker test plan with predicted results for each acquisition.
 
@@ -107,7 +107,7 @@ Internally, geometry is always the explicit form. See `configs/geometry_dental.y
 | S1 | Poisson quantum noise at a set I₀; additive electronic noise |
 | S2 | Polyenergetic spectrum → beam hardening (two-material) |
 | S3 | Scatter (convolution-kernel model, scatter-to-primary ratio by thickness) |
-| S4 | Focal-spot blur; source motion blur during exposure (continuous-motion mode) |
+| S4 | Focal-spot blur (source motion blur during exposure is modelled but out of scope: step-and-shoot only) |
 | S5 | Truncation (object wider than the detector's field of view; with a 2D source grid wider than the detector, the upper part of a tall object is not seen by every source position); detector lag (placeholder) |
 
 Pass A results must state which stages were enabled. Simulation fidelity is limited, so image-quality numbers from simulation are **upper bounds**.
@@ -144,7 +144,7 @@ Each milestone ends with a written result: a short report in `reports/` with fig
 | M1 | Geometry: schema, loader, validator, plotter, parametric generators (grid, linear, arc), explicit (encoder-log) geometry, TIGRE and LEAP adapters | Round-trip test < 0.1 px for both engines on grid and linear trajectories |
 | M2 | Simulator: phantoms + stages S0–S2 | Simulated projections match reference projector (S0) to numerical precision; noise statistics match theory (S1) |
 | M3 | Reconstruction: DTS-FBP, OS-SART, ASD-POCS | Beads reconstruct at correct depths (±1 slice) in all methods |
-| M4 | Metrics + comparison report; add S3–S5; trade-study harness | Report comparing methods across ≥ 2 phantoms and ≥ 3 geometries (grid density, e.g. 5 × 5 vs 6 × 6, and ~10 / 20 / 40 projections; source extent; SID; motion mode) |
+| M4 | Metrics + comparison report; add S3–S5; trade-study harness | Report comparing methods across ≥ 2 phantoms and ≥ 3 geometries (grid density, e.g. 5 × 5 vs 6 × 6, and ~10 / 20 / 40 projections; source extent; SID) |
 | M5 | Simulated calibration: phantom design, geometry estimator, sensitivity study | Estimator recovers injected errors within spec; report states the geometry tolerance needed to keep metric loss < X % (X set by Gil) |
 | M6 | I/O and tool: mock raw format, dark/flat/log preprocessing, CLI, TIFF/DICOM export, napari viewer | End-to-end run from mock raw files to slice stack by someone other than the developer |
 | M7 | Bunker test plan, aligned with the *Suggested Measurements* document (commissioning, basic imaging, representative objects, datasets at ~10/20/40 projections and several exposures, full metadata) | Ordered acquisition list with predicted results and pass/fail thresholds |
@@ -199,7 +199,7 @@ Approximate values from Gil (2026-10-09) unless marked; the hardware requirement
 | Object-to-detector gap | 10 mm | Gil (approximate) |
 | Object height | up to 200 mm | Gil (approximate) |
 | Detector | 300 × 200 mm, 0.1 mm pixels (3000 × 2000); study binning 4 → 0.4 mm | Gil (approximate); binning is a placeholder |
-| Motion mode | Step-and-shoot (also study continuous) | placeholder |
+| Motion mode | Step-and-shoot only; shooting while moving is not contemplated (too many variables) | Gil, 2026-10-10 |
 | Source (selected) | NSI / Rigaku **M237** monoblock: 35–70 kV (custom 15–80), 10 W max, 5–200 µA, **transmission** target (Au, Ag, Rh or W — which one TBD), Be window (thickness not stated), 110° cone, tungsten-filament cathode, grounded anode, air cooled, < 700 g. Focal spot size and spectrum not stated | rigaku.com product page, read 2026-10-09 |
 | Source (requirements) | 60–120 kV, 10 W, field emission, spot < 1 mm (2–3 mm minimum spec), ~90° cone | requirements doc |
 | Detector type | CMOS flat panel, 14–16 bit, ≥ 10 fps, full scan < 30 s | requirements doc |

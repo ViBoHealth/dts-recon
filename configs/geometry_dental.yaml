@@ -17,7 +17,7 @@ detector:                 # stationary ("detector never moves")
 trajectory:
   mode: parametric
   type: grid              # 2D source scan in the plane z = source_to_detector_mm
-  motion: step_and_shoot  # PLACEHOLDER
+  motion: step_and_shoot  # Gil, 2026-10-10: step-and-shoot only
   source_to_detector_mm: 500     # SID (approximate, Gil)
   grid_shape: [6, 6]             # (nx, ny), approximate (Gil: 5x5 or 6x6)
   n_projections: 36

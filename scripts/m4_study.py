@@ -112,6 +112,14 @@ def dental_metrics(f, vol, dp) -> dict:
         out[f"{tag}_depth_err_mm"] = float(zs[k] - les.center[2])
         out[f"{tag}_found"] = bool(abs(zs[k] - les.center[2]) <= 2 * les.radius)  # strongest lucency at this structure
         out[f"{tag}_cnr"] = float(c[k_true] / noise) if noise > 0 else float("nan")
+        # The strongest lucency in the whole head can be real anatomy in the other jaw at the same (x, y)
+        # (pulp / ligament space of the far tooth: 0.8x the lesion's contrast in the ground truth), so also:
+        near = np.abs(zs - les.center[2]) <= 8.0
+        k_loc = int(np.argmax(np.where(near, c, -np.inf)))
+        out[f"{tag}_local_depth_err_mm"] = float(zs[k_loc] - les.center[2])  # peak within ±8 mm of the truth
+        other = inside & ~(np.abs(zs - les.center[2]) <= 10.0)
+        # contrast at the true depth / strongest lucency elsewhere in the head (> 1: the lesion stands out)
+        out[f"{tag}_prominence"] = float(c[k_true] / c[other].max()) if other.any() and c[other].max() > 0 else float("nan")
     return out
 
 

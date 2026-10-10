@@ -34,6 +34,7 @@ class DTSFBPParams:
     depth_gain: bool = True  # divide each slice by the mean magnification at its height (see dts_fbp)
     coverage_norm: bool = True  # divide by the number of projections that see each voxel, not by N
     pad: int = 2
+    edge_taper_mm: float = 0.0  # > 0: extrapolate projections past the detector edge (truncation, §6.4) instead of zero padding
 
 
 def _cosine_weights(geom, i: int) -> np.ndarray:
@@ -84,6 +85,10 @@ def filter_projections(geom, g: np.ndarray, p: DTSFBPParams | None = None) -> np
         x = g[i].astype(np.float64)
         if p.cosine_weight:
             x = x * _cosine_weights(geom, i)
+        if p.edge_taper_mm > 0:
+            from .truncation import extrapolate_edges
+
+            x = extrapolate_edges(x, (pr, pc), int(round(p.edge_taper_mm / min(geom.pixel_pitch_u, geom.pixel_pitch_v))))
         X = np.fft.rfft2(x, s=(pr, pc))
         out[i] = np.fft.irfft2(X * filter_response(geom, i, (pr, pc), p), s=(pr, pc))[:n_r, :n_c]
     return out

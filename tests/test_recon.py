@@ -82,3 +82,14 @@ def test_asd_pocs_lowers_tv_and_keeps_data_fit():
     assert tv(f_tv) < tv(f_sart)
     r_sart = np.linalg.norm(eng.project(f_sart) - g)
     assert log.data_residual[-1] < 1.5 * r_sart
+
+
+def test_extrapolate_edges_is_continuous_and_tapers_to_zero():
+    from dtsrecon.recon.truncation import extrapolate_edges
+
+    x = np.full((20, 30), 2.0)
+    out = extrapolate_edges(x, (64, 64), 8)
+    assert np.allclose(out[:20, :30], 2.0)
+    assert 1.9 < out[5, 30] < 2.0 and 0 < out[5, 37] < 0.1 and out[5, 40] == 0.0  # right side
+    assert 1.9 < out[5, 63] < 2.0  # wrapped left side
+    assert 1.9 < out[20, 5] < 2.0 and 1.9 < out[63, 5] < 2.0 and out[40, 5] == 0.0

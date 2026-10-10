@@ -143,3 +143,35 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
       periapical lesion in 5 of 8 realistic geometries; OS-SART and ASD-POCS find it (within 2.5 mm) in all.
       The socket is mislocalized/low-CNR at 300 mm extent (smaller angle -> poor depth separation of jaws).
       1.5 mm Al changed IQ metrics little (not dose-matched).
+23. **M4 gaps (2026-10-10)** — `scripts/m4_gaps.py`, results `reports/m4/gaps_{motion,st,trunc}.csv`; 6x6 / 400 /
+    SID 500, realistic stages, PLACEHOLDER physics.
+    - **Motion mode: step-and-shoot only** (Gil: shooting while moving is not contemplated, too many
+      variables). Brief updated. The continuous-motion model (S4) stays in the simulator, tested. For the
+      record (IQ phantom): exposure over 25 % of the step costs little; 50 % doubles ghosts (OS-SART 0.16 ->
+      0.42) and widens beads 2.0 -> 2.7 mm; 100 % breaks ASD-POCS (bead 5.7 slices off, ghost ratio 4).
+    - **DTS-FBP slice-thickness filter** (st 1 -> 0.25, radial and oriented): thickens slices (ASF 6.1 -> 12.4
+      mm radial) and raises ghosts; no metric improves meaningfully. Kept off by default.
+    - **Correction to item 22 (dental "wrong jaw").** The depth metric "strongest lucency in the head at the
+      lesion's (x, y)" is ill-posed: the ground truth itself has comparable lucencies in the other jaw at the
+      same (x, y) (pulp / ligament space). Truth "prominence" (contrast at the true depth / strongest lucency
+      elsewhere in the head) is only 1.05 for the periapical lesion and 0.54 for the socket (the truth's
+      strongest lucency at the socket's (x, y) is in the near jaw). So DTS-FBP did not put the lesion in the
+      wrong jaw; it shows it with slightly less contrast relative to that anatomy (prominence 0.88 vs
+      OS-SART 1.41, ASD-POCS 1.96). Added `*_local_depth_err_mm` (peak within ±8 mm of the truth) and
+      `*_prominence`. At 6x6/400 all methods place both targets within 2.3 mm (local); at 5x5/300 the socket is
+      6–8 mm off for DTS-FBP and OS-SART (real depth-resolution loss at the smaller angle; ASD-POCS 1.5 mm).
+      Dental lesion conspicuity needs image review, not this metric alone.
+    - **Truncation** (tall wide PMMA block, z 15–195 mm, 320 x 240 mm: wider than the detector, taller than the
+      ~167 mm fully sampled height; targets at 40 / 100 / 150 / 185 mm):
+      * Iterative methods need the extended volume (whole object). Volume cut at the fully sampled height and
+        detector width: OS-SART / ASD-POCS ghost ratio 1–4.8, bead depth errors up to 3.1 mm, background
+        spread 93 %. Extended volume: ghost 0.14–0.36, depth error <= 0.6 mm, spread ~10 %; ASD-POCS keeps
+        ASF ~4.1–4.7 mm and depth error < 0.45 mm even at z = 185 (seen by 24 of 36 sources).
+      * DTS-FBP is independent of the volume extent (per-voxel backprojection), but zero padding at the
+        detector edge rings badly (ghost ratio 2–6); edge extrapolation (`edge_taper_mm=40`) cuts it 5–8x
+        (0.5–0.8) and the background spread 47 -> 37 %. Still far worse than iterative + extended volume.
+      * The 12 mm fat discs are not detected by DTS-FBP (wrong-sign CNR): wide, low-contrast objects lose
+        their low frequencies in DTS.
+    - **RMSE / SSIM** (`metrics.iq.fidelity`, affine-fitted to truth): implemented, but uninformative on these
+      phantoms (rmse_rel 0.8–1.0, SSIM 0.95–0.99 on IQ planes, dominated by uniform PMMA that DTS cannot
+      reproduce), as the brief warned. Reported, not used for decisions.

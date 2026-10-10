@@ -68,3 +68,17 @@ def test_inplane_fwhm_of_gaussian_bead():
     s = 1.2
     f = 0.1 + np.exp(-(xs**2 + ys**2) / (2 * s**2) - (zs - 20.0) ** 2 / (2 * 5.0**2))
     assert inplane_fwhm(f, VOL, (0.0, 0.0, 20.0)) == pytest.approx(2.3548 * s, rel=0.05)
+
+
+def test_fidelity_is_invariant_to_affine_scaling_and_drops_with_blur():
+    from scipy import ndimage
+
+    from dtsrecon.metrics.iq import fidelity
+
+    rng = np.random.default_rng(0)
+    vol = VolumeSpec(40, 40, 5, 1.0, 1.0)
+    truth = ndimage.gaussian_filter(rng.random(vol.shape), 1.0)
+    same = fidelity(3.0 * truth + 7.0, truth, vol, [0.0])
+    assert same["rmse_rel"] < 1e-9 and same["ssim"] > 0.999
+    blurred = fidelity(ndimage.gaussian_filter(truth, (0, 2, 2)), truth, vol, [0.0])
+    assert blurred["rmse_rel"] > 0.2 and blurred["ssim"] < 0.9

@@ -151,3 +151,34 @@ def inplane_fwhm(f: np.ndarray, vol: VolumeSpec, xyz, half_window_mm: float = 8.
     wx = fwhm(xs[max(ix - h, 0): ix + h + 1], win[cy, :], xyz[0])
     wy = fwhm(ys[max(iy - h, 0): iy + h + 1], win[:, cx], xyz[1])
     return float(np.nanmean([wx, wy]))
+
+
+def ssim_2d(a: np.ndarray, b: np.ndarray, data_range: float, sigma_px: float = 1.5, mask: np.ndarray | None = None) -> float:
+    """Mean SSIM (Wang et al. 2004; Gaussian window sigma 1.5 px, K1 0.01, K2 0.03) of two images, averaged
+    over mask (default: everywhere)."""
+    from scipy import ndimage
+
+    a, b = a.astype(np.float64), b.astype(np.float64)
+    g = lambda x: ndimage.gaussian_filter(x, sigma_px, mode="reflect")
+    c1, c2 = (0.01 * data_range) ** 2, (0.03 * data_range) ** 2
+    ma, mb = g(a), g(b)
+    va, vb, cab = g(a * a) - ma**2, g(b * b) - mb**2, g(a * b) - ma * mb
+    s = ((2 * ma * mb + c1) * (2 * cab + c2)) / ((ma**2 + mb**2 + c1) * (va + vb + c2))
+    return float(s[mask].mean() if mask is not None else s.mean())
+
+
+def fidelity(f: np.ndarray, truth: np.ndarray, vol: VolumeSpec, z_planes, mask: np.ndarray | None = None) -> dict:
+    """RMSE and SSIM against the ground-truth mu volume in in-focus planes (brief §7; "use with caution under
+    limited angle"). DTS values are not quantitative (FBP output is in arbitrary units), so each method is first
+    mapped to truth by one least-squares affine fit a*f + b over all listed planes (within mask).
+    rmse_rel = RMSE / std(truth) in those planes (0 = perfect, 1 = no better than a constant)."""
+    z = vol.axis("z")
+    ks = sorted({int(np.argmin(np.abs(z - zp))) for zp in z_planes})
+    m = np.ones(f.shape[1:], bool) if mask is None else mask
+    F, T = f[ks][:, m].ravel().astype(np.float64), truth[ks][:, m].ravel().astype(np.float64)
+    A = np.stack([F, np.ones_like(F)], 1)
+    (a, b), *_ = np.linalg.lstsq(A, T, rcond=None)
+    rmse = float(np.sqrt(np.mean((a * F + b - T) ** 2)))
+    rng = float(T.max() - T.min()) or 1.0
+    ss = [ssim_2d(a * f[k] + b, truth[k], rng, mask=m) for k in ks]
+    return {"rmse_rel": rmse / float(T.std() or 1.0), "ssim": float(np.mean(ss))}

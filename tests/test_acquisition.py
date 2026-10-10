@@ -96,3 +96,32 @@ def test_lag_carries_previous_frame():
     Ia, Ib = np.exp(-a), np.exp(-b)
     assert np.allclose(Ib[1:], 0.95 * Ia[1:] + 0.05 * Ia[:-1], atol=1e-5)
     assert np.allclose(Ib[0], Ia[0], atol=1e-6)
+
+
+def test_motion_blur_samples_span_the_travel():
+    """Continuous mode: sub-sources are spread over motion_fraction of the step to the next position,
+    centered on the nominal position, equally weighted."""
+    cfg = StageConfig(motion_fraction=0.5, motion_samples=5)
+    subs = sub_source_geometries(GEOM, cfg)
+    assert len(subs) == 5 and np.isclose(sum(w for _, w in subs), 1.0)
+    off = np.stack([g.src - GEOM.src for g, _ in subs])  # (5, N, 3)
+    step = GEOM.src[1] - GEOM.src[0]
+    assert np.allclose(off.mean(0), 0.0, atol=1e-9)
+    assert np.allclose(off[-1, 0] - off[0, 0], 0.5 * step * 4 / 5)
+    assert np.allclose(off[..., 2], 0.0)
+
+
+def test_motion_blur_widens_bead_along_travel_only():
+    ph = Phantom([Ellipsoid("steel", (0, 0, 60), None, (3, 3, 3))])
+    a = simulate(ph, GEOM, VOL, F, StageConfig())
+    b = simulate(ph, GEOM, VOL, F, StageConfig(motion_fraction=1.0, motion_samples=9))
+    i = 1  # first row of the serpentine: travel along +x (detector columns)
+    def var_cr(img):  # second moments of the shadow along columns (x) and rows (y), pixels^2
+        w = 1.0 - np.exp(-img)  # intensity domain, where motion blur is a linear average
+        rr, cc = np.mgrid[: img.shape[0], : img.shape[1]]
+        mc, mr = (cc * w).sum() / w.sum(), (rr * w).sum() / w.sum()
+        return ((cc - mc) ** 2 * w).sum() / w.sum(), ((rr - mr) ** 2 * w).sum() / w.sum()
+    (ca, ra), (cb, rb) = var_cr(a[i]), var_cr(b[i])
+    # travel 80 mm -> shadow at z = 60 moves 80 * 60 / 440 = 10.9 mm = 5.5 px: uniform smear adds 5.5^2 / 12
+    assert cb - ca == pytest.approx((80 * 60 / 440 / GEOM.pixel_pitch_u) ** 2 / 12, rel=0.25)
+    assert abs(rb - ra) < 0.05 * (cb - ca)
