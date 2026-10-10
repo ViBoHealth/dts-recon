@@ -17,7 +17,21 @@ try:
 except ImportError:  # pragma: no cover
     tomographicModels = None
 
-XY_HALF_VOXEL_SHIFT = 0.5  # empirical LEAP v1.26 modular-beam correction, see LeapEngine.__init__
+# The CPU modular-beam Joseph projector in LEAP v1.26 samples x/y half a voxel off for rays
+# travelling toward -z (our geometry). third_party/leap/joseph_modular_cpu_fix.patch fixes it;
+# refuse to run on the CPU without it.
+REQUIRED_CPU_PATCH = "joseph_modular_cpu_fix.patch"
+
+
+def _cpu_patch_installed() -> bool:
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.find_spec("leapctype")
+    if spec is None or spec.origin is None:
+        return False
+    info = Path(spec.origin).with_name("leapct_build_info.txt")
+    return info.exists() and REQUIRED_CPU_PATCH in info.read_text()
 
 
 def available() -> bool:
@@ -31,6 +45,11 @@ class LeapEngine:
         geom.validate()
         self.geom, self.vol = geom, vol
         lp = tomographicModels()
+        if lp.get_gpu() < 0 and not _cpu_patch_installed():
+            raise RuntimeError(
+                f"LEAP CPU build without {REQUIRED_CPU_PATCH}: its projector is off by half a voxel "
+                "in x/y for this geometry. Rebuild with third_party/leap/build_leap_mac.sh."
+            )
         if not verbose:
             lp.set_log_warning()
             lp.print_warnings = False
@@ -42,14 +61,7 @@ class LeapEngine:
         )
         if not ok:
             raise RuntimeError("LEAP rejected the modular-beam geometry")
-        # Measured in M0 (reports/M0_mac_setup.md): with modular-beam geometry, LEAP v1.26 places
-        # voxel (i, j) at -0.5 voxel in x and y relative to its documented set_volume formula
-        # (same for even/odd sizes and 1-3 mm voxels; z agrees to < 0.1 mm). Compensate here;
-        # tests/test_leap_engine.py::test_projection_geometry guards it.
-        lp_center = (vol.center[0] + XY_HALF_VOXEL_SHIFT * vol.voxel_xy,
-                     vol.center[1] + XY_HALF_VOXEL_SHIFT * vol.voxel_xy,
-                     vol.center[2])
-        ok = lp.set_volume(vol.nx, vol.ny, vol.nz, vol.voxel_xy, vol.dz, *lp_center)
+        ok = lp.set_volume(vol.nx, vol.ny, vol.nz, vol.voxel_xy, vol.dz, *vol.center)
         if ok is False:
             raise RuntimeError("LEAP rejected the volume specification")
         # LEAP silently forces cubic voxels for non-axially-aligned modular beams (prints a
@@ -58,7 +70,7 @@ class LeapEngine:
             "voxel_xy": lp.get_voxelWidth(), "dz": lp.get_voxelHeight(),
             "cx": lp.get_offsetX(), "cy": lp.get_offsetY(), "cz": lp.get_offsetZ(),
         }
-        wanted = {"voxel_xy": vol.voxel_xy, "dz": vol.dz, "cx": lp_center[0], "cy": lp_center[1], "cz": lp_center[2]}
+        wanted = {"voxel_xy": vol.voxel_xy, "dz": vol.dz, "cx": vol.center[0], "cy": vol.center[1], "cz": vol.center[2]}
         bad = {k: (wanted[k], actual[k]) for k in wanted if abs(wanted[k] - actual[k]) > 1e-4 * max(1.0, abs(wanted[k]))}
         if bad:
             raise ValueError(

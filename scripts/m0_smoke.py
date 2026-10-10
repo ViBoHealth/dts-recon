@@ -161,4 +161,4 @@ if __name__ == "__main__":
     for method, rows in res["depth"].items():
         print(f"\n{method}")
         for r in rows:
-            print(f"  bead ({r['x']:6.1f},{r['y']:5.1f})  z_true {r['z_true']:6.1f}  z_meas {r['z_meas']:7.2f}  err {r['err_slices']:+.2f} slices")
+            print(f"  bead ({r['x']:6.1f},{r['y']:5.1f})  z_true {r['z_true']:6.1f}  centroid {r['z_meas']:7.2f} ({r['err_slices']:+.2f} sl)  peak {r['z_peak']:7.2f} ({r['err_peak_slices']:+.2f} sl)")

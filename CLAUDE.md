@@ -43,4 +43,4 @@ python scripts/m0_smoke.py; python scripts/m0_benchmark.py
 
 - Our geometry requires cubic voxels in LEAP; the adapter raises on any mismatch.
 - LEAP's FBP does not support our geometry; filter in NumPy and use the engine backprojector.
-- The adapter applies a +0.5 voxel x/y offset correction; keep `test_projection_geometry` passing.
+- LEAP CPU must be built with `third_party/leap/joseph_modular_cpu_fix.patch` (projector half-voxel bug + backprojection speedup); the adapter refuses otherwise. Keep the projection/backprojection geometry and adjoint tests passing.

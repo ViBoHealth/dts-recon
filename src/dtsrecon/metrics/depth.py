@@ -7,12 +7,17 @@ import numpy as np
 from ..geometry.schema import VolumeSpec
 
 
-def z_profile(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, half_width: int = 1) -> np.ndarray:
-    """Mean over a (2*half_width+1)^2 xy patch around the voxel nearest (x, y), for every slice."""
+def z_profile(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, half_width: int = 2) -> np.ndarray:
+    """For every slice, the maximum over a (2*half_width+1)^2 xy window around the voxel nearest (x, y).
+
+    A max (not a fixed column) because the out-of-plane blur of an off-axis bead is tilted toward
+    the mid-sweep source position: a vertical column that misses the bead center by a fraction of a
+    voxel would read the peak at the wrong depth.
+    """
     ix = int(np.argmin(np.abs(vol.axis("x") - x)))
     iy = int(np.argmin(np.abs(vol.axis("y") - y)))
     sl = recon[:, max(iy - half_width, 0): iy + half_width + 1, max(ix - half_width, 0): ix + half_width + 1]
-    return sl.mean(axis=(1, 2))
+    return sl.max(axis=(1, 2))
 
 
 def peak_z(profile: np.ndarray, vol: VolumeSpec) -> tuple[float, int]:
@@ -28,10 +33,28 @@ def peak_z(profile: np.ndarray, vol: VolumeSpec) -> tuple[float, int]:
     return float(z[0] + (k + frac) * vol.dz), k
 
 
+def bead_centroid_z(recon: np.ndarray, vol: VolumeSpec, x: float, y: float, z: float,
+                    half_xy: int = 3, half_z: int = 12, level: float = 0.5) -> float:
+    """z (mm) of the intensity-weighted 3D centroid of the bead response: voxels within a window
+    around the true position whose value exceeds `level` x the window maximum.
+    Robust to the tilted out-of-plane blur of off-axis beads and to sub-voxel bead positions."""
+    xs, ys, zs = vol.axis("x"), vol.axis("y"), vol.axis("z")
+    ix, iy, iz = (int(np.argmin(np.abs(a - p))) for a, p in ((xs, x), (ys, y), (zs, z)))
+    sl = (slice(max(iz - half_z, 0), iz + half_z + 1), slice(max(iy - half_xy, 0), iy + half_xy + 1),
+          slice(max(ix - half_xy, 0), ix + half_xy + 1))
+    w = recon[sl].astype(float)
+    w = np.where(w >= level * w.max(), w, 0.0)
+    Z = zs[sl[0]][:, None, None]
+    return float((Z * w).sum() / w.sum())
+
+
 def bead_depth_errors(recon: np.ndarray, vol: VolumeSpec, beads_xyz) -> list[dict]:
-    """For each true bead (x, y, z): measured peak z and the error in slices."""
+    """For each true bead (x, y, z): measured depth and the error in slices.
+    z_meas: half-max 3D centroid (primary). z_peak: peak of the windowed-max z profile (secondary)."""
     out = []
     for x, y, z in beads_xyz:
-        zm, k = peak_z(z_profile(recon, vol, x, y), vol)
-        out.append({"x": x, "y": y, "z_true": z, "z_meas": zm, "err_slices": (zm - z) / vol.dz, "peak_slice": k})
+        zc = bead_centroid_z(recon, vol, x, y, z)
+        zp, k = peak_z(z_profile(recon, vol, x, y), vol)
+        out.append({"x": x, "y": y, "z_true": z, "z_meas": zc, "err_slices": (zc - z) / vol.dz,
+                    "z_peak": zp, "err_peak_slices": (zp - z) / vol.dz, "peak_slice": k})
     return out

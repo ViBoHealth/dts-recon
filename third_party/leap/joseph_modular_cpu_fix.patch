@@ -1,0 +1,131 @@
+diff --git a/src/projectors_Joseph_cpu.cpp b/src/projectors_Joseph_cpu.cpp
+index 6d6b88a..46b805f 100644
+--- a/src/projectors_Joseph_cpu.cpp
++++ b/src/projectors_Joseph_cpu.cpp
+@@ -361,16 +361,77 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+     const int searchWidth_u = 1 + int(ceil(0.5f * params->voxelWidth / params->pixelWidth * fabs(D)));
+     const int searchWidth_v = 1 + int(ceil(0.5f * params->voxelWidth / params->pixelHeight * fabs(D)));
+ 
++
++    // [dts-recon patch] Loop invariants hoisted out of the candidate-pixel loops (same float values).
++    const float u_0f = params->u_0();
++    const float v_0f = params->v_0();
++    const float pixelWidthf = params->pixelWidth;
++    const float pixelHeightf = params->pixelHeight;
++
++    int iv_lo = max(0, v_ind - searchWidth_v);
++    int iv_hi = min(params->numRows - 1, v_ind + searchWidth_v);
++    int iu_lo = max(0, u_ind - searchWidth_u);
++    int iu_hi = min(params->numCols - 1, u_ind + searchWidth_u);
++
++    // [dts-recon patch] Exact footprint bound. In the branch whose dominant ray axis is a, the weight
++    // of detector pixel (iu, iv) is nonzero only if the ray source->pixel crosses the plane through
++    // the voxel center (perpendicular to a) within +-voxelWidth of the voxel center along both other
++    // axes b and c. That square maps to a convex quadrilateral on the detector, so the bounding box of
++    // its four projected corners contains every pixel with nonzero weight. Intersected with the original window, so the result is unchanged (zero-weight pixels skipped).
++    {
++        int ax;
++        if (fabs(r.x) >= max(fabs(r.y), fabs(r.z))) ax = 0;
++        else if (fabs(r.y) >= fabs(r.z)) ax = 1;
++        else ax = 2;
++        const float rr[3] = { r.x, r.y, r.z };
++        const float nn[3] = { detNormal.x, detNormal.y, detNormal.z };
++        const int bx = (ax + 1) % 3, cx = (ax + 2) % 3;
++        const float T = params->voxelWidth;
++        const float r_dot_n = rr[0] * nn[0] + rr[1] * nn[1] + rr[2] * nn[2];
++        const float r_dot_u = rr[0] * u_vec[0] + rr[1] * u_vec[1] + rr[2] * u_vec[2];
++        const float r_dot_v = rr[0] * v_vec[0] + rr[1] * v_vec[1] + rr[2] * v_vec[2];
++        const float pc_dot_u = p_minus_c.x * u_vec[0] + p_minus_c.y * u_vec[1] + p_minus_c.z * u_vec[2];
++        const float pc_dot_v = p_minus_c.x * v_vec[0] + p_minus_c.y * v_vec[1] + p_minus_c.z * v_vec[2];
++        float umin = 1e30f, umax = -1e30f, vmin = 1e30f, vmax = -1e30f;
++        bool ok = true;
++        for (int k = 0; k < 4 && ok; k++)
++        {
++            const float sb = (k & 1) ? T : -T;
++            const float sc = (k & 2) ? T : -T;
++            const float q_dot_n = r_dot_n + sb * nn[bx] + sc * nn[cx];
++            if (q_dot_n * r_dot_n <= 0.0f || fabs(q_dot_n) < 1e-6f * fabs(r_dot_n))
++            {
++                ok = false;  // corner not strictly in front of the source: keep the original window
++                break;
++            }
++            const float Dq = -p_minus_c_dot_n / q_dot_n;
++            const float uq = pc_dot_u + Dq * (r_dot_u + sb * u_vec[bx] + sc * u_vec[cx]);
++            const float vq = pc_dot_v + Dq * (r_dot_v + sb * v_vec[bx] + sc * v_vec[cx]);
++            umin = min(umin, uq); umax = max(umax, uq);
++            vmin = min(vmin, vq); vmax = max(vmax, vq);
++        }
++        if (ok)
++        {
++            // pixel centers inside [min, max] (weights are exactly zero on and beyond the boundary);
++            // 1e-3 pixel tolerance covers float rounding of the corner projections
++            const float tol = 1e-3f;
++            iu_lo = max(iu_lo, int(ceil((umin - u_0f) / pixelWidthf - tol)));
++            iu_hi = min(iu_hi, int(floor((umax - u_0f) / pixelWidthf + tol)));
++            iv_lo = max(iv_lo, int(ceil((vmin - v_0f) / pixelHeightf - tol)));
++            iv_hi = min(iv_hi, int(floor((vmax - v_0f) / pixelHeightf + tol)));
++        }
++    }
++
+     const double3 rd = make_double3(double(r.x) * double(T_x_inv), double(r.y) * double(T_x_inv), double(r.z) * double(T_x_inv));
+     if (fabs(r.x) >= max(fabs(r.y), fabs(r.z)))
+     {
+         const float rayWeight = R / fabs(r.x);
+-        for (int iv = max(0, v_ind - searchWidth_v); iv <= min(params->numRows-1, v_ind + searchWidth_v); iv++)
++        for (int iv = iv_lo; iv <= iv_hi; iv++)
+         {
+-            const double v = iv * params->pixelHeight + params->v_0();
+-            for (int iu = max(0, u_ind - searchWidth_u); iu <= min(params->numCols - 1, u_ind + searchWidth_u); iu++)
++            const double v = iv * pixelHeightf + v_0f;
++            for (int iu = iu_lo; iu <= iu_hi; iu++)
+             {
+-                const double u = iu * params->pixelWidth + params->u_0();
++                const double u = iu * pixelWidthf + u_0f;
+ 
+                 const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
+                 const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
+@@ -391,12 +452,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+     else if (fabs(r.y) >= fabs(r.z))
+     {
+         const float rayWeight = R / fabs(r.y);
+-        for (int iv = max(0, v_ind - searchWidth_v); iv <= min(params->numRows - 1, v_ind + searchWidth_v); iv++)
++        for (int iv = iv_lo; iv <= iv_hi; iv++)
+         {
+-            const double v = iv * params->pixelHeight + params->v_0();
+-            for (int iu = max(0, u_ind - searchWidth_u); iu <= min(params->numCols - 1, u_ind + searchWidth_u); iu++)
++            const double v = iv * pixelHeightf + v_0f;
++            for (int iu = iu_lo; iu <= iu_hi; iu++)
+             {
+-                const double u = iu * params->pixelWidth + params->u_0();
++                const double u = iu * pixelWidthf + u_0f;
+ 
+                 const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
+                 const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
+@@ -417,12 +478,12 @@ float backproject_Joseph_modular_kernel(float* aProj, parameters* params, float*
+     else
+     {
+         const float rayWeight = R / fabs(r.z);
+-        for (int iv = max(0, v_ind - searchWidth_v); iv <= min(params->numRows - 1, v_ind + searchWidth_v); iv++)
++        for (int iv = iv_lo; iv <= iv_hi; iv++)
+         {
+-            const double v = iv * params->pixelHeight + params->v_0();
+-            for (int iu = max(0, u_ind - searchWidth_u); iu <= min(params->numCols - 1, u_ind + searchWidth_u); iu++)
++            const double v = iv * pixelHeightf + v_0f;
++            for (int iu = iu_lo; iu <= iu_hi; iu++)
+             {
+-                const double u = iu * params->pixelWidth + params->u_0();
++                const double u = iu * pixelWidthf + u_0f;
+ 
+                 const double trueRay_x = u * u_vec[0] + v * v_vec[0] - p_minus_c.x;
+                 const double trueRay_y = u * u_vec[1] + v * v_vec[1] - p_minus_c.y;
+@@ -570,8 +631,8 @@ float projectLine_Joseph(float* mu, parameters* params, float3 p, float3 dst)
+             val = tex3D_rev(mu, ix_start, iy_start, float(iz_start), params) *
+                 (min((float(params->numZ) - half), ip.z) - (float(iz_start) + half));
+ 
+-            const float ix_offset = ix_start + ir.x * float(iz_start) + 0.5;
+-            const float iy_offset = iy_start + ir.y * float(iz_start) + 0.5;
++            const float ix_offset = ix_start + ir.x * float(iz_start);
++            const float iy_offset = iy_start + ir.y * float(iz_start);
+             for (int iz = iz_start; iz >= iz_min; iz--)
+                 val += tex3D_rev(mu, ix_offset - ir.x * float(iz), iy_offset - ir.y * float(iz), float(iz), params);
+         }

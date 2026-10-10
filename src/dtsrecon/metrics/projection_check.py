@@ -33,3 +33,29 @@ def bead_centroid_errors(
                          "pred_row": pr, "meas_row": mr, "d_col_px": mc - pc, "d_row_px": mr - pr})
     d = np.array([[r["d_col_px"], r["d_row_px"]] for r in rows])
     return {"max_abs_dcol_px": float(np.abs(d[:, 0]).max()), "max_abs_drow_px": float(np.abs(d[:, 1]).max()), "rows": rows}
+
+
+def backprojected_point_offsets(
+    geom: ProjectionGeometry, engine, vol: VolumeSpec, points, sigma_px: float = 0.7, half: int = 3
+) -> np.ndarray:
+    """Backproject, for every projection, a small Gaussian blob centered on the analytic
+    projection of each point; return (n_points, 3) offsets (x, y, z) in voxels between the
+    backprojected peak centroid and the true point. Points should sit at voxel centers."""
+    cc, rr = np.meshgrid(np.arange(geom.n_cols), np.arange(geom.n_rows))
+    xs, ys, zs = vol.axis("x"), vol.axis("y"), vol.axis("z")
+    out = []
+    for P in points:
+        P = np.asarray(P, dtype=float)
+        g = np.empty((geom.n_projections, geom.n_rows, geom.n_cols), np.float32)
+        for i in range(geom.n_projections):
+            c, r = geom.project_point(i, P)
+            g[i] = np.exp(-((cc - c) ** 2 + (rr - r) ** 2) / (2 * sigma_px**2))
+        f = engine.backproject(g)
+        ix, iy, iz = (int(np.argmin(np.abs(a - p))) for a, p in ((xs, P[0]), (ys, P[1]), (zs, P[2])))
+        sl = (slice(iz - half, iz + half + 1), slice(iy - half, iy + half + 1), slice(ix - half, ix + half + 1))
+        w = f[sl].astype(float)
+        w = np.clip(w - np.median(w), 0, None)
+        Z, Y, X = np.meshgrid(zs[sl[0]], ys[sl[1]], xs[sl[2]], indexing="ij")
+        d = np.array([(X * w).sum(), (Y * w).sum(), (Z * w).sum()]) / w.sum() - P
+        out.append(d / np.array([vol.voxel_xy, vol.voxel_xy, vol.dz]))
+    return np.array(out)

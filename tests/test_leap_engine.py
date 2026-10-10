@@ -2,13 +2,14 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from dtsrecon.engines import leap_adapter
 from dtsrecon.geometry.loader import load_geometry
 from dtsrecon.geometry.schema import VolumeSpec
 from dtsrecon.metrics.depth import bead_depth_errors
-from dtsrecon.metrics.projection_check import bead_centroid_errors
+from dtsrecon.metrics.projection_check import backprojected_point_offsets, bead_centroid_errors
 from dtsrecon.phantoms.geometric import Ball, sphere_with_beads
 
 pytestmark = pytest.mark.skipif(not leap_adapter.available(), reason="leapct not installed")
@@ -30,7 +31,8 @@ def test_non_cubic_voxels_rejected():
 
 
 def test_projection_geometry(engine):
-    """LEAP bead centroids match analytic ray hits to < 0.1 px (guards the half-voxel correction)."""
+    """LEAP projector: bead centroids match analytic ray hits to < 0.1 px
+    (guards the x/y half-voxel projector fix in joseph_modular_cpu_fix.patch)."""
     res = bead_centroid_errors(engine.geom, engine, VOL, [Ball(b, 2.5, 1.0) for b in BEADS])
     assert res["max_abs_dcol_px"] < 0.1
     assert res["max_abs_drow_px"] < 0.1
@@ -42,3 +44,21 @@ def test_os_sart_bead_depths(engine):
     rec = engine.sart(engine.project(truth), n_iter=5, n_subsets=8)
     for row in bead_depth_errors(rec, VOL, BEADS):
         assert abs(row["err_slices"]) <= 1.0, row
+
+
+def test_backprojection_geometry(engine):
+    """LEAP backprojector puts a point back where it came from (< 0.1 voxel in x, y, z)."""
+    xs, ys, zs = VOL.axis("x"), VOL.axis("y"), VOL.axis("z")
+    pts = [(xs[24], ys[24], zs[24]), (xs[10], ys[33], zs[8]), (xs[37], ys[14], zs[40])]
+    d = backprojected_point_offsets(engine.geom, engine, VOL, pts)
+    assert np.abs(d).max() < 0.1, d
+
+
+def test_projector_backprojector_adjoint(engine):
+    """<A x, y> == <x, A^T y> for an object away from the volume edges (LEAP's edge handling
+    differs between the two by a few % for objects touching the boundary)."""
+    x = sphere_with_beads(VOL, 30.0, 3.0, BEADS).voxelize(VOL)
+    y = engine.project(x)
+    lhs = float(np.dot(y.ravel().astype(float), y.ravel().astype(float)))
+    rhs = float(np.dot(x.ravel().astype(float), engine.backproject(y).ravel().astype(float)))
+    assert abs(lhs - rhs) / lhs < 1e-5

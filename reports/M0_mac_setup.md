@@ -1,5 +1,7 @@
 # M0 — Mac setup, LEAP CPU smoke test and benchmark
 
+> **Superseded in part (2026-10-09, later the same day):** the −0.5 voxel offset (§3.2) is a LEAP projector bug, now patched; the adapter correction was wrong for the backprojector and is removed. Benchmark (§5) and depth results (§4) were re-measured. See `docs/decisions.md` items 6, 9–11.
+
 **Date:** 2026-10-09 · **Scope:** M0, Mac only (no GPU machine, no TIGRE)
 **Hardware:** Apple M5 Max (6 performance + 12 efficiency cores = 18), 36 GB unified memory, macOS 27.0.1, on AC power, normal power mode
 **Simulation stage:** S0 only (monoenergetic line integrals, no noise)

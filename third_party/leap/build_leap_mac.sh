@@ -11,6 +11,9 @@
 # Steps (see reports/M0_mac_setup.md and docs/decisions.md):
 #   1. clone LLNL/LEAP at LEAP_TAG
 #   2. apply cpu_build_fix.patch (guards three GPU-only calls missing #ifndef __USE_CPU in v1.24-v1.26)
+#   2b. apply joseph_modular_cpu_fix.patch: removes a spurious +0.5 voxel x/y sample offset in the CPU
+#      modular Joseph projector (rays toward -z) and bounds the CPU backprojector search to the nonzero
+#      footprint (backprojection output unchanged); see docs/decisions.md
 #   3. use LEAP's own src/cpu_CMakeLists.txt (the default one requires CUDA)
 #   4. configure with explicit OpenMP flags (Apple clang ships no OpenMP; FindOpenMP needs them for keg-only libomp)
 #      and CMAKE_POLICY_VERSION_MINIMUM=3.5 (CMake >= 4 rejects LEAP's cmake_minimum_required(3.0))
@@ -35,6 +38,7 @@ cd LEAP
 git checkout --quiet "$LEAP_TAG"
 git checkout --quiet -- .
 git apply "$HERE/cpu_build_fix.patch"
+git apply "$HERE/joseph_modular_cpu_fix.patch"
 cp src/cpu_CMakeLists.txt src/CMakeLists.txt
 
 rm -rf build && mkdir build && cd build
@@ -47,5 +51,5 @@ cd ..
 
 SITE="$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 cp build/lib/libleapct.dylib src/leapctype.py src/leap_filter_sequence.py src/leap_preprocessing_algorithms.py "$SITE/"
-echo "$LEAP_TAG $(git rev-parse --short HEAD) +cpu_build_fix.patch" > "$SITE/leapct_build_info.txt"
+echo "$LEAP_TAG $(git rev-parse --short HEAD) +cpu_build_fix.patch +joseph_modular_cpu_fix.patch" > "$SITE/leapct_build_info.txt"
 echo "Installed LEAP $LEAP_TAG (CPU) into $SITE"
