@@ -22,6 +22,17 @@ def os_sart(engine, g: np.ndarray, n_iter: int, n_subsets: int, f0: np.ndarray |
     return f
 
 
+def _norm_diff(a: np.ndarray, b: np.ndarray | None, block: int = 16) -> float:
+    """||a - b||_2 (or ||a||) in float64, a block of slices at a time (no full-volume temporaries)."""
+    s = 0.0
+    for z0 in range(0, a.shape[0], block):
+        d = a[z0: z0 + block].astype(np.float64)
+        if b is not None:
+            d -= b[z0: z0 + block]
+        s += float(np.vdot(d, d))
+    return float(np.sqrt(s))
+
+
 @dataclass
 class ASDPOCSLog:
     data_residual: list[float] = field(default_factory=list)  # ||P f - g||_2 after each POCS pass
@@ -47,21 +58,24 @@ def asd_pocs(engine, g: np.ndarray, n_iter: int = 20, n_subsets: int = 6, n_tv: 
     op = engine.os_sart_operator(g, n_subsets)
     log = ASDPOCSLog()
     dtvg = None
+    ref = np.empty_like(f)  # f before the POCS step, then before the TV steps (one extra volume, reused)
+    gr = np.empty_like(f)  # TV gradient buffer
     for _ in range(n_iter):
-        f_prev = f.copy()
+        np.copyto(ref, f)
         op.step(f, relax=relax)
-        dp = float(np.linalg.norm(f - f_prev))
+        dp = _norm_diff(f, ref)
         resid = float(np.linalg.norm(engine.project(f) - g))
         if dtvg is None:
             dtvg = alpha * dp
-        f_pocs = f.copy()
+        np.copyto(ref, f)
         for _ in range(n_tv):
-            gr = tv_gradient(f, eps=tv_eps, weights=tv_weights)
-            nrm = np.linalg.norm(gr)
+            tv_gradient(f, eps=tv_eps, weights=tv_weights, out=gr)
+            nrm = _norm_diff(gr, None)
             if nrm == 0:
                 break
-            f -= (dtvg * gr / nrm).astype(np.float32)
-        dpp = float(np.linalg.norm(f - f_pocs))
+            gr *= np.float32(dtvg / nrm)
+            f -= gr
+        dpp = _norm_diff(f, ref)
         if dp > 0 and dpp / dp > r_max and (eps is None or resid > eps):
             dtvg *= alpha_red
         relax *= relax_red

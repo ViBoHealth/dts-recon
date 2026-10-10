@@ -1,0 +1,5 @@
+stack,geometry,lesion_depth_err_mm,lesion_found,lesion_cnr,lesion_local_depth_err_mm,lesion_prominence,socket_depth_err_mm,socket_found,socket_cnr,socket_local_depth_err_mm,socket_prominence
+recon_calibrated/asd-pocs.tif,calibration: data/m6/stage_geometry.yaml,-0.104,True,1.163,-0.104,2.216,0.084,True,1.587,0.084,5.076
+recon_calibrated/dts-fbp.tif,calibration: data/m6/stage_geometry.yaml,-2.904,True,0.688,-2.904,1.391,0.484,True,0.659,0.484,2.708
+recon_calibrated/os-sart.tif,calibration: data/m6/stage_geometry.yaml,-2.104,True,1.222,-2.104,1.649,1.284,True,1.123,1.284,5.417
+recon_encoders/os-sart.tif,encoders,-2.104,True,1.257,-2.104,1.352,-0.316,True,1.274,-0.316,7.424

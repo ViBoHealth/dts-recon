@@ -203,3 +203,42 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
       tolerances above are loose for tall objects. Finer voxels will expose smaller errors. Calibration
       accuracy (≤ 0.1 mm) is well inside every tolerance either way, so calibrating removes the issue, given a
       repeatable stage and a measured phantom.
+25. **M4 compute (2026-10-10)** — `scripts/m4_memory.py`, `reports/m4/compute.csv`. Dental phantom, 6x6 / 400,
+    36 projections, Mac M5 Max CPU (LEAP), each case in a fresh process:
+    | binning (voxel) | volume | DTS-FBP | OS-SART (10 it) | ASD-POCS (10 it) | peak RSS (sim -> + recon) |
+    |---|---|---|---|---|---|
+    | 8x (0.8 mm) | 300x175x128 | 5 s | 7 s | 13 s | 0.66 -> 0.68–1.3 GB |
+    | 4x (0.4 mm) | 600x350x256 | 40 s | 71 s | 107 s | 3.0 -> 3.5 / 3.6 / 7.9 GB |
+    The simulation (voxelization) sets the peak for DTS-FBP and OS-SART; ASD-POCS adds ~4.8 GB at 0.4 mm
+    (~24 volume copies: TV gradient temporaries). Decision: the M4/M5 sweeps stay on the Mac (both full studies ran locally); no
+    GPU rental needed so far. Inference: a full-detector-footprint volume at
+    0.4 mm (~1 GB/copy) puts ASD-POCS near 25 GB, close to the 36 GB limit; reducing its temporaries is the
+    first fix if needed.
+26. **M6 I/O and tool (2026-10-10)** — `src/dtsrecon/io/{scan,mock,preprocess,export}.py`, `src/dtsrecon/pipeline.py`,
+    `dts mock-scan | info | calibrate | recon | view`; user guide `docs/USAGE.md`; raw format `docs/raw_format.md`
+    (our PLACEHOLDER strawman for brief §10). End-to-end: `scripts/m6_end_to_end.sh`, scoring `scripts/m6_check.py`,
+    logs `reports/m6/`. Dependencies: pydicom (approved list), napari[all] (napari approved; PyQt6 backend
+    approved by Gil 2026-10-10).
+    - **Raw format:** headerless uint16 frames + `scan.yaml` (darks, flats, projections with position /
+      repeat index, encoder x/y, timestamp, kV/µA/ms). Preprocessing: mean dark, mean flat, defect map (flat
+      vs 5x5 local median, hot darks), repeats averaged, charge normalization, binning in the linear domain,
+      then -ln. Geometry from a calibration file (binned to the scan's pixel size if needed) or encoders.
+    - **Mock detector model** (PLACEHOLDER): offset + column offset, smooth and per-pixel gain, read noise,
+      dead/hot pixels; conversion gain set so the open beam is <= 60 % of full scale.
+    - **End-to-end, mock data** (Mac CPU): calibration scan (36 x 3000 x 2000, 0.1 mm) -> `dts calibrate`:
+      every source within 0.05 mm of the truth (encoders up to 7.7 mm off), 600/600 injected defects found,
+      5 s. Dental scan (0.4 mm, S2+S3+S4+S5 + detector) -> `dts recon`, volume 850 x 600 x 265 at 0.4 mm
+      (detector + 20 mm margin): OS-SART 131 s / 5.4 GB peak, DTS-FBP 90 s / 3.4 GB, ASD-POCS 172 s / 6.9 GB.
+      DICOM export written. Lesion and socket found by all methods (reports/m6/e2e_metrics.csv).
+      Calibrated vs encoder geometry (OS-SART): same lesion depth error (2.1 mm); the low lesion (z ≈ 37 mm)
+      is tolerant of the stage errors, as M5 predicts (h/(S−h)).
+    - **ASD-POCS memory fix:** the TV step ran in float64 on whole volumes (~10 volume-sized temporaries):
+      18 GB peak at 850 x 600 x 265. Now float32, blocks of 16 slices with a one-slice halo, buffers reused:
+      6.9 GB, 270 -> 172 s. Matches the old gradient to 1e-12 in float64 (tests).
+    - **ASD-POCS lesion depth is numerically fragile at 0.4 mm.** The lesion's contrast (~0.005 /mm) is
+      comparable to the differences between float32 and float64 runs (0.8 % rms of the volume): lesion depth
+      error 0.1 mm (float32) vs 0.9 mm (float64) on the same data; an earlier run with the old code gave 5.7 mm
+      (not chased further). At 0.8 mm both give 0.3 mm. LEAP itself is deterministic (bit-identical reruns).
+      Do not read single-run ASD-POCS lesion depths to better than a few mm; image review still decides.
+    - Not done: a run by someone other than the developer (the M6 acceptance test) — needs Gil or a colleague
+      to follow docs/USAGE.md.

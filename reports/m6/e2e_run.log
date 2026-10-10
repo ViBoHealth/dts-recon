@@ -1,0 +1,35 @@
+$ .venv/bin/dts calibrate data/m6/cal_scan -o data/m6/stage_geometry.yaml
+wrote data/m6/stage_geometry.yaml: rms residual 0.019 px, max source standard error (x, y, z) 0.012, 0.013, 0.026 mm; sources moved up to 7.69 mm from the encoder positions (4.5 s)
+        5.63 real         5.43 user         0.17 sys
+          1514831872  maximum resident set size
+$ .venv/bin/dts info data/m6/dog_scan
+data/m6/dog_scan: MOCK dental scan, S2+S3+S4+S5 + detector model (S1 noise from the model); config geometry_dental.yaml, binning 4  [PLACEHOLDER]
+  detector 750 x 500 at 0.4 x 0.4 mm, uint16 (16 bit, little-endian)
+  8 dark, 8 flat, 36 projection frames at 36 source positions; SID 500.0 mm; calibration: none (encoders)
+  object z range 10.0–106.0 mm
+        0.62 real         0.58 user         0.03 sys
+            82182144  maximum resident set size
+$ .venv/bin/dts recon data/m6/dog_scan -o data/m6/recon_calibrated --method os-sart --calibration data/m6/stage_geometry.yaml
+preprocessed 36 positions -> 750 x 500 px at 0.4 mm; 38 defective pixels; geometry from calibration: data/m6/stage_geometry.yaml (0.2 s)
+volume 850 x 600 x 265 at 0.4 mm (0.50 GB per copy), z 5–111 mm; os-sart
+wrote data/m6/recon_calibrated/os-sart.tif (130.8 s reconstruction)
+      131.90 real      2053.85 user         6.19 sys
+          5417484288  maximum resident set size
+$ .venv/bin/dts recon data/m6/dog_scan -o data/m6/recon_calibrated --method asd-pocs --calibration data/m6/stage_geometry.yaml
+preprocessed 36 positions -> 750 x 500 px at 0.4 mm; 38 defective pixels; geometry from calibration: data/m6/stage_geometry.yaml (0.2 s)
+volume 850 x 600 x 265 at 0.4 mm (0.50 GB per copy), z 5–111 mm; asd-pocs
+wrote data/m6/recon_calibrated/asd-pocs.tif (269.9 s reconstruction)
+      271.24 real      2252.62 user        41.82 sys
+         17956601856  maximum resident set size
+$ .venv/bin/dts recon data/m6/dog_scan -o data/m6/recon_calibrated --method dts-fbp --calibration data/m6/stage_geometry.yaml
+preprocessed 36 positions -> 750 x 500 px at 0.4 mm; 38 defective pixels; geometry from calibration: data/m6/stage_geometry.yaml (0.2 s)
+volume 850 x 600 x 265 at 0.4 mm (0.50 GB per copy), z 5–111 mm; dts-fbp
+wrote data/m6/recon_calibrated/dts-fbp.tif (89.5 s reconstruction)
+       90.62 real       212.98 user         1.21 sys
+          3352215552  maximum resident set size
+$ .venv/bin/dts recon data/m6/dog_scan -o data/m6/recon_encoders --method os-sart --dicom
+preprocessed 36 positions -> 750 x 500 px at 0.4 mm; 38 defective pixels; geometry from encoders (0.2 s)
+volume 850 x 600 x 265 at 0.4 mm (0.50 GB per copy), z 5–111 mm; os-sart
+wrote data/m6/recon_encoders/os-sart.tif and DICOM (118.1 s reconstruction)
+      119.56 real      1852.80 user         6.53 sys
+          5430181888  maximum resident set size

@@ -32,6 +32,39 @@ def test_tv_gradient_matches_finite_differences():
         assert g[i] == pytest.approx(fd, rel=1e-5)
 
 
+def _tv_gradient_whole_volume(f, eps, weights):
+    """Reference: the original whole-volume float64 implementation."""
+    f = f.astype(np.float64)
+    D = []
+    for a, w in enumerate(weights):
+        d = np.zeros_like(f)
+        hi, lo = [slice(None)] * 3, [slice(None)] * 3
+        hi[a], lo[a] = slice(1, None), slice(0, -1)
+        d[tuple(lo)] = f[tuple(hi)] - f[tuple(lo)]
+        D.append(w * d)
+    mag = np.sqrt(sum(d * d for d in D) + eps**2)
+    grad = np.zeros_like(f)
+    for a, (w, d) in enumerate(zip(weights, D)):
+        q = w * d / mag
+        hi, lo = [slice(None)] * 3, [slice(None)] * 3
+        hi[a], lo[a] = slice(1, None), slice(0, -1)
+        grad -= q
+        grad[tuple(hi)] += q[tuple(lo)]
+    return grad, float(mag.sum())
+
+
+@pytest.mark.parametrize("block", [1, 2, 3, 16])
+def test_blockwise_tv_matches_whole_volume(block):
+    f = np.random.default_rng(1).random((11, 6, 7))
+    w = (0.25, 1.0, 0.7)
+    ref, tv_ref = _tv_gradient_whole_volume(f, 1e-3, w)
+    np.testing.assert_allclose(tv_gradient(f, 1e-3, w, block=block), ref, rtol=1e-12, atol=1e-12)
+    assert tv(f, 1e-3, w, block=block) == pytest.approx(tv_ref, rel=1e-12)
+    g32 = tv_gradient(f.astype(np.float32), 1e-3, w, block=block)
+    assert g32.dtype == np.float32
+    np.testing.assert_allclose(g32, ref, rtol=1e-4, atol=1e-4)
+
+
 def test_resample_z_box_average():
     vol = VolumeSpec.from_z_range(2, 2, 7, 0.5, 10.0, 0.5)
     f = np.arange(7, dtype=np.float32)[:, None, None] * np.ones((7, 2, 2), np.float32)

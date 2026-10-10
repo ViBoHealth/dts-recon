@@ -1,0 +1,6 @@
+{'bin': 8, 'voxel_mm': 0.8, 'volume': '300x175x128', 'volume_gb': 0.03, 'projections_gb': 0.01, 'method': 'DTS-FBP', 'recon_s': 5.0, 'peak_rss_gb': 0.79, 'peak_rss_after_sim_gb': 0.66}
+{'bin': 8, 'voxel_mm': 0.8, 'volume': '300x175x128', 'volume_gb': 0.03, 'projections_gb': 0.01, 'method': 'OS-SART', 'recon_s': 7.0, 'peak_rss_gb': 0.68, 'peak_rss_after_sim_gb': 0.66}
+{'bin': 8, 'voxel_mm': 0.8, 'volume': '300x175x128', 'volume_gb': 0.03, 'projections_gb': 0.01, 'method': 'ASD-POCS', 'recon_s': 13.0, 'peak_rss_gb': 1.29, 'peak_rss_after_sim_gb': 0.66}
+{'bin': 4, 'voxel_mm': 0.4, 'volume': '600x350x256', 'volume_gb': 0.2, 'projections_gb': 0.05, 'method': 'DTS-FBP', 'recon_s': 39.5, 'peak_rss_gb': 3.54, 'peak_rss_after_sim_gb': 3.03}
+{'bin': 4, 'voxel_mm': 0.4, 'volume': '600x350x256', 'volume_gb': 0.2, 'projections_gb': 0.05, 'method': 'OS-SART', 'recon_s': 70.7, 'peak_rss_gb': 3.6, 'peak_rss_after_sim_gb': 3.03}
+{'bin': 4, 'voxel_mm': 0.4, 'volume': '600x350x256', 'volume_gb': 0.2, 'projections_gb': 0.05, 'method': 'ASD-POCS', 'recon_s': 107.2, 'peak_rss_gb': 7.85, 'peak_rss_after_sim_gb': 3.03}
