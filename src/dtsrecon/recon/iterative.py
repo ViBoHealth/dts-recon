@@ -33,6 +33,16 @@ def _norm_diff(a: np.ndarray, b: np.ndarray | None, block: int = 16) -> float:
     return float(np.sqrt(s))
 
 
+# ASD-POCS settings tuned in M4 on the realistic IQ phantom at 6x6 / 400 (docs/decisions.md item 22; home
+# advantage at that case). The tool and the study scripts all use these.
+ASD_POCS_TUNED = {"n_tv": 10, "alpha": 0.05, "tv_weights": (0.25, 1.0, 1.0)}
+
+
+def default_subsets(n_projections: int) -> int:
+    """OS subsets used throughout the studies: n/4, clipped to 2..6."""
+    return max(2, min(6, n_projections // 4))
+
+
 @dataclass
 class ASDPOCSLog:
     data_residual: list[float] = field(default_factory=list)  # ||P f - g||_2 after each POCS pass

@@ -25,7 +25,7 @@ from dtsrecon.geometry.generators import grid_trajectory
 from dtsrecon.geometry.schema import VolumeSpec
 from dtsrecon.phantoms.dental import dental_phantom
 from dtsrecon.recon.dts_fbp import DTSFBPParams, dts_fbp
-from dtsrecon.recon.iterative import asd_pocs, os_sart
+from dtsrecon.recon.iterative import ASD_POCS_TUNED, asd_pocs, default_subsets, os_sart
 from dtsrecon.simulate.acquisition import ScatterModel, StageConfig, simulate
 from dtsrecon.simulate.forward import NoiseModel, mu_volume
 
@@ -95,12 +95,12 @@ def main(grid, extent, sid, scale, binning=8, voxel=0.8):
     g = simulate(dp.phantom, geom, vol, LeapEngine, cfg, np.random.default_rng(0))
     eng = LeapEngine(geom, vol)
     n = geom.n_projections
-    sub = max(2, min(6, n // 4))
+    sub = default_subsets(n)
     vols = {
         "truth (mu, ~42 keV)": mu_volume(dp.phantom.voxelize(vol, 2)),
         "DTS-FBP": dts_fbp(eng, g, DTSFBPParams(mode="radial")),
         "OS-SART 10 it": os_sart(eng, g, 10, sub),
-        "ASD-POCS 10 it": asd_pocs(eng, g, n_iter=10, n_subsets=sub, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))[0],
+        "ASD-POCS 10 it": asd_pocs(eng, g, n_iter=10, n_subsets=sub, **ASD_POCS_TUNED)[0],
     }
     name = f"dental_{scale}_{grid[0]}x{grid[1]}_{int(extent)}_sid{int(sid)}"
     out = ROOT / "reports" / "stacks" / name

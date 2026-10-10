@@ -38,7 +38,7 @@ from dtsrecon.metrics.iq import asf, cnr, ghost_ratio, inplane_fwhm, ssp
 from dtsrecon.phantoms.calibration import Pose, default_calibration_phantom
 from dtsrecon.phantoms.iq import iq_phantom
 from dtsrecon.recon.dts_fbp import DTSFBPParams, dts_fbp
-from dtsrecon.recon.iterative import asd_pocs, os_sart
+from dtsrecon.recon.iterative import ASD_POCS_TUNED, asd_pocs, default_subsets, os_sart
 from dtsrecon.simulate.acquisition import StageConfig, simulate
 from dtsrecon.simulate.forward import NoiseModel
 
@@ -99,11 +99,11 @@ SWEEPS = {  # error type -> (field builder, magnitudes, unit)
 
 
 def methods(eng, n):
-    sub = max(2, min(6, n // 4))
+    sub = default_subsets(n)
     return {
         "DTS-FBP": lambda g: dts_fbp(eng, g, DTSFBPParams(mode="radial")),
         "OS-SART": lambda g: os_sart(eng, g, 10, sub),
-        "ASD-POCS": lambda g: asd_pocs(eng, g, n_iter=10, n_subsets=sub, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))[0],
+        "ASD-POCS": lambda g: asd_pocs(eng, g, n_iter=10, n_subsets=sub, **ASD_POCS_TUNED)[0],
     }
 
 

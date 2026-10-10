@@ -12,7 +12,7 @@ from dtsrecon.geometry.loader import save_explicit
 from dtsrecon.geometry.schema import VolumeSpec
 from dtsrecon.io.export import read_tiff, write_dicom, write_tiff
 from dtsrecon.io.mock import DetectorModel, write_mock_scan
-from dtsrecon.io.preprocess import PreprocessParams, bin_geometry, bin_image, preprocess
+from dtsrecon.io.preprocess import PreprocessParams, bin_geometry, bin_image, fix_defects, preprocess
 from dtsrecon.io.scan import DetectorMeta, Exposure, Frame, GeometryMeta, ScanManifest, read_scan, write_frame, write_manifest
 
 leap_only = pytest.mark.skipif(not leap_adapter.available(), reason="leapct not installed")
@@ -52,15 +52,30 @@ def test_exposure_normalization_and_missing_fields(tmp_path):
           Frame(file=write_frame(tmp_path, "f", np.full((6, 8), 1100.0), det), kind="flat", exposure=Exposure(ua=50, ms=100))]
     # projection at twice the flat's charge: net = 2 x 1000 x exp(-p)
     fr.append(Frame(file=write_frame(tmp_path, "p", 100 + 2000 * np.exp(-p_true) * np.ones((6, 8)), det), kind="projection",
-                    exposure=Exposure(ua=100, ms=100), position_index=0, encoder_x_mm=0.0, encoder_y_mm=0.0))
+                    exposure=Exposure(kvp=70, ua=100, ms=100), position_index=0, encoder_x_mm=0.0, encoder_y_mm=0.0))
+    # a repeat at the same position with 3x the flat's charge: each repeat is normalized by its own charge
+    fr.append(Frame(file=write_frame(tmp_path, "p1", 100 + 3000 * np.exp(-p_true) * np.ones((6, 8)), det), kind="projection",
+                    exposure=Exposure(kvp=70, ua=150, ms=100), position_index=0, exposure_index=1, encoder_x_mm=0.0,
+                    encoder_y_mm=0.0))
     write_manifest(tmp_path, ScanManifest(detector=det, geometry=GeometryMeta(sid_mm=500.0), frames=fr))
-    p, _, _ = preprocess(read_scan(tmp_path))
+    p, geom, _ = preprocess(read_scan(tmp_path))
     np.testing.assert_allclose(p, p_true, atol=2e-3)  # raw values are rounded to integers
+    assert geom.exposures[0] == {"kvp": 70.0, "ma": 0.1, "ms": 100.0}  # geometry schema keys: µA -> mA
     with pytest.raises(ValueError, match="encoder"):
         Frame(file="x", kind="projection", position_index=0)
     (tmp_path / "frames" / "p.raw").write_bytes(b"\0" * 10)
     with pytest.raises(ValueError, match="bytes"):
         preprocess(read_scan(tmp_path))
+
+
+def test_fix_defects_fills_isolated_pixels_and_large_clusters():
+    img = np.add.outer(np.arange(40.0), np.arange(60.0))  # linear ramp: neighbour mean is exact
+    bad = np.zeros(img.shape, bool)
+    bad[5, 7] = bad[30, 50] = True
+    bad[10:30, 10:40] = True  # 20 x 30 saturated block: needs a grown window
+    out = fix_defects(np.where(bad, 1e6, img), bad)
+    assert out[5, 7] == pytest.approx(img[5, 7]) and out[30, 50] == pytest.approx(img[30, 50], abs=0.6)
+    assert np.all(out[bad] < 200) and np.isfinite(out).all()
 
 
 def test_bin_geometry_matches_bin_image():
@@ -87,6 +102,13 @@ def test_calibration_file_overrides_encoders(tmp_path):
     (tmp_path / "scan.yaml").write_text(yaml.safe_dump(doc))
     _, geom, _ = preprocess(read_scan(tmp_path))
     np.testing.assert_allclose(geom.src, cal.src)
+    _, geom, info = preprocess(read_scan(tmp_path), calibration="encoders")  # forced, as dts calibrate does
+    np.testing.assert_allclose(geom.src, g.src)
+    assert info["geometry"] == "encoders"
+    bad_v = g.__class__(**{**g.__dict__, "pixel_pitch_v": 2.0})
+    save_explicit(bad_v, tmp_path / "cal_v.yaml")
+    with pytest.raises(ValueError, match="does not"):
+        preprocess(read_scan(tmp_path), calibration=tmp_path / "cal_v.yaml")
     # calibration at full resolution, scan read out binned 2x2: the calibration geometry is binned to match
     full = small_geom(192, 128, 0.5)
     save_explicit(full.__class__(**{**full.__dict__, "src": cal.src}), tmp_path / "cal_full.yaml")

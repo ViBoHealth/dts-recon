@@ -77,7 +77,8 @@ def view(paths: list[str]) -> None:
     viewer = None
     for p in paths:
         f, vol, meta = read_tiff(p)
-        lo, hi = np.percentile(f[:, f.shape[1] // 8: -f.shape[1] // 8 or None, f.shape[2] // 8: -f.shape[2] // 8 or None], [0.5, 99.5])
+        sub = f[::2, f.shape[1] // 8: -f.shape[1] // 8 or None: 3, f.shape[2] // 8: -f.shape[2] // 8 or None: 3]  # central region, strided
+        lo, hi = np.percentile(sub, [0.5, 99.5])
         name = meta.get("method", p) if len(paths) > 1 else p
         if viewer is None:
             viewer = napari.Viewer(title="dts view")

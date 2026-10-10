@@ -33,7 +33,7 @@ from dtsrecon.metrics.iq import asf, cnr, ghost_ratio, inplane_fwhm, ssp
 from dtsrecon.phantoms.dental import dental_phantom
 from dtsrecon.phantoms.iq import iq_phantom
 from dtsrecon.recon.dts_fbp import DTSFBPParams, dts_fbp
-from dtsrecon.recon.iterative import asd_pocs, os_sart
+from dtsrecon.recon.iterative import ASD_POCS_TUNED, asd_pocs, default_subsets, os_sart
 from dtsrecon.simulate.acquisition import ScatterModel, StageConfig, simulate
 from dtsrecon.simulate.forward import NoiseModel
 from dtsrecon.simulate.spectrum import tungsten_transmission
@@ -75,13 +75,13 @@ def realistic(**kw):
 
 
 def methods(eng, n_proj):
-    sub = max(2, min(6, n_proj // 4))
+    sub = default_subsets(n_proj)
     return {
         "DTS-FBP": lambda g: dts_fbp(eng, g, DTSFBPParams(mode="radial")),
         "OS-SART": lambda g: os_sart(eng, g, 10, sub),
         # tuned on the realistic IQ phantom at the 6x6/400 baseline (alpha 0.2 -> 0.05, w_z 1 -> 0.25):
         # see docs/decisions.md; gives ASD-POCS a slight home advantage at that geometry
-        "ASD-POCS": lambda g: asd_pocs(eng, g, n_iter=10, n_subsets=sub, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))[0],
+        "ASD-POCS": lambda g: asd_pocs(eng, g, n_iter=10, n_subsets=sub, **ASD_POCS_TUNED)[0],
     }
 
 

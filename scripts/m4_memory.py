@@ -28,7 +28,7 @@ def one(bin_: int, method: str):
     from dtsrecon.geometry.schema import VolumeSpec
     from dtsrecon.phantoms.dental import dental_phantom
     from dtsrecon.recon.dts_fbp import DTSFBPParams, dts_fbp
-    from dtsrecon.recon.iterative import asd_pocs, os_sart
+    from dtsrecon.recon.iterative import ASD_POCS_TUNED, asd_pocs, os_sart
     from dtsrecon.simulate.acquisition import StageConfig, simulate
     from dtsrecon.simulate.forward import NoiseModel
 
@@ -46,7 +46,7 @@ def one(bin_: int, method: str):
     elif method == "OS-SART":
         os_sart(eng, g, 10, 6)
     else:
-        asd_pocs(eng, g, n_iter=10, n_subsets=6, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))
+        asd_pocs(eng, g, n_iter=10, n_subsets=6, **ASD_POCS_TUNED)
     dt = time.perf_counter() - t
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**30  # bytes on macOS
     n_vox = vol.nx * vol.ny * vol.nz

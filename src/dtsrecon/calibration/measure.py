@@ -46,6 +46,32 @@ class SimulatedWindows:
         self._bg = float(mu("pmma")) * self.phantom.holder_thickness_mm
         self._P = self.phantom.world_beads(self.true_pose)
 
+    @property
+    def background(self) -> float:
+        """Line integral of the PMMA holder alone (uniform)."""
+        return self._bg
+
+    def full_frame(self, i: int, pad_px: int = 3) -> np.ndarray:
+        """Noiseless -ln(I/I0) over the whole detector for projection i: the background plus each bead's exact
+        chord contribution in a window around its shadow (cheap at full 0.1 mm resolution). Ignores `noise`."""
+        from ..phantoms.calibration import projected_beads, shadow_radius_px
+
+        g = self.true_geom
+        uv = projected_beads(g, self._P)[i]
+        rad = shadow_radius_px(g, self._P, self.phantom.bead_radius)[i]
+        noise, self.noise = self.noise, None
+        try:
+            out = np.full((g.n_rows, g.n_cols), self._bg)
+            for (c, r), rr in zip(uv, rad):
+                h = int(np.ceil(rr)) + pad_px
+                c, r = int(round(c)), int(round(r))
+                r0, r1, c0, c1 = max(r - h, 0), min(r + h + 1, g.n_rows), max(c - h, 0), min(c + h + 1, g.n_cols)
+                if r1 > r0 and c1 > c0:
+                    out[r0:r1, c0:c1] += self(i, r0, r1, c0, c1) - self._bg
+        finally:
+            self.noise = noise
+        return out
+
     def __call__(self, i: int, r0: int, r1: int, c0: int, c1: int) -> np.ndarray:
         g, s = self.true_geom, self.supersample
         sub = (np.arange(s) - (s - 1) / 2) / s

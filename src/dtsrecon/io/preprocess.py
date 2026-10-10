@@ -3,11 +3,11 @@
 Steps (brief §8 M6):
 1. dark = mean of dark frames; flat = mean of flat frames - dark (the open-beam signal per pixel).
 2. Defective pixels: flat response off its 5x5 local median by more than `defect_tol` (relative), or a dark
-   level more than `hot_mad` MADs above the median dark. Replaced by the median of good neighbours.
+   level more than `hot_mad` MADs above the median dark. Replaced by the mean of good neighbours.
 3. Per source position: mean over repeated exposures of (raw - dark). Pixels at or above `saturation_frac`
    x full scale in any exposure are counted (reported) and treated as defects for that frame.
-4. Exposure normalization: if both the flats and a projection carry µA and ms, the flat is scaled by the
-   charge ratio (projection / flat).
+4. Exposure normalization: if both the flats and a projection frame carry µA and ms, that frame is scaled
+   by the charge ratio (flat / frame) before repeats are averaged.
 5. Binning (b x b mean of the net signals, before the ratio and log, so noise averages in the linear domain).
 6. p = -ln(max(net / flat, min_ratio)).
 
@@ -53,17 +53,27 @@ def defect_map(dark: np.ndarray, flat_net: np.ndarray, tol: float = 0.25, hot_ma
 
 
 def fix_defects(img: np.ndarray, bad: np.ndarray, size: int = 5) -> np.ndarray:
-    """Replace defective pixels by the median of the good pixels in a size x size neighbourhood."""
+    """Replace defective pixels by the mean of the good pixels in a size x size neighbourhood (normalized
+    convolution, vectorized). Pixels with no good neighbour are filled with a window doubled in size, up to
+    4 times (large clusters, e.g. saturated areas), then with the median of all good pixels."""
     if not bad.any():
         return img
-    out = img.copy()
-    h = size // 2
-    rows, cols = np.nonzero(bad)
-    for r, c in zip(rows, cols):
-        r0, r1, c0, c1 = max(r - h, 0), r + h + 1, max(c - h, 0), c + h + 1
-        good = ~bad[r0:r1, c0:c1]
-        out[r, c] = np.median(img[r0:r1, c0:c1][good]) if good.any() else np.median(img[~bad])
-    return out
+    good = (~bad).astype(np.float64)
+    vals = np.where(bad, 0.0, img)
+    out = img.astype(np.float64, copy=True)
+    todo = bad.copy()
+    for _ in range(5):
+        num = ndimage.uniform_filter(vals, size, mode="nearest")
+        den = ndimage.uniform_filter(good, size, mode="nearest")
+        ok = todo & (den > 1e-9)
+        out[ok] = num[ok] / den[ok]
+        todo &= ~ok
+        if not todo.any():
+            break
+        size *= 2
+    if todo.any():
+        out[todo] = np.median(img[~bad]) if (~bad).any() else 0.0
+    return out.astype(img.dtype, copy=False)
 
 
 def bin_image(img: np.ndarray, b: int) -> np.ndarray:
@@ -97,7 +107,10 @@ def encoder_geometry(scan: Scan) -> ProjectionGeometry:
         fr = scan.projections_at(i)
         src[i] = (np.mean([f.encoder_x_mm for f in fr]), np.mean([f.encoder_y_mm for f in fr]), scan.manifest.geometry.sid_mm)
         ts.append(fr[0].timestamp_s)
-        ex.append(fr[0].exposure.model_dump(exclude_none=True) if fr[0].exposure else None)
+        e = fr[0].exposure
+        # geometry schema keys (kvp, ma, ms; brief §4.2 / geometry.loader.EXPOSURE_KEYS); the scan gives µA
+        ex.append({k: v for k, v in {"kvp": e.kvp, "ma": None if e.ua is None else e.ua / 1000.0, "ms": e.ms}.items()
+                   if v is not None} if e else None)
     d = scan.detector
     g = ProjectionGeometry(src, np.zeros((n, 3)), np.tile([1.0, 0.0, 0.0], (n, 1)), np.tile([0.0, 1.0, 0.0], (n, 1)),
                            d.n_cols, d.n_rows, d.pixel_pitch_u, d.pixel_pitch_v, placeholder=scan.manifest.placeholder,
@@ -108,9 +121,13 @@ def encoder_geometry(scan: Scan) -> ProjectionGeometry:
 
 
 def scan_geometry(scan: Scan, calibration: str | Path | None = None) -> tuple[ProjectionGeometry, str]:
-    """Unbinned geometry for the scan and where it came from ("calibration: <path>" or "encoders")."""
+    """Unbinned geometry for the scan and where it came from ("calibration: <path>" or "encoders").
+    calibration: a geometry YAML; None = the scan's own calibration file if any, else encoders;
+    "encoders" = encoders even if the scan names a calibration file."""
     from ..geometry.loader import load_geometry
 
+    if calibration == "encoders":
+        return encoder_geometry(scan), "encoders"
     path = Path(calibration) if calibration else scan.calibration_path()
     if path is None:
         return encoder_geometry(scan), "encoders"
@@ -121,14 +138,16 @@ def scan_geometry(scan: Scan, calibration: str | Path | None = None) -> tuple[Pr
     k = int(round(d.pixel_pitch_u / g.pixel_pitch_u))  # a scan read out binned k x k vs the calibration scan
     if k >= 1 and np.isclose(k * g.pixel_pitch_u, d.pixel_pitch_u) and np.isclose(k * g.pixel_pitch_v, d.pixel_pitch_v):
         g = bin_geometry(g, k)
-    if (g.n_cols, g.n_rows) != (d.n_cols, d.n_rows) or not np.isclose(g.pixel_pitch_u, d.pixel_pitch_u):
-        raise ValueError(f"{path}: detector {g.n_cols} x {g.n_rows} at {g.pixel_pitch_u} mm does not match the scan "
-                         f"({d.n_cols} x {d.n_rows} at {d.pixel_pitch_u} mm)")
+    if ((g.n_cols, g.n_rows) != (d.n_cols, d.n_rows) or not np.isclose(g.pixel_pitch_u, d.pixel_pitch_u)
+            or not np.isclose(g.pixel_pitch_v, d.pixel_pitch_v)):
+        raise ValueError(f"{path}: detector {g.n_cols} x {g.n_rows} at {g.pixel_pitch_u} x {g.pixel_pitch_v} mm does not "
+                         f"match the scan ({d.n_cols} x {d.n_rows} at {d.pixel_pitch_u} x {d.pixel_pitch_v} mm)")
     return g, f"calibration: {path}"
 
 
 def preprocess(scan: Scan, params: PreprocessParams | None = None, calibration: str | Path | None = None):
-    """Returns (g [N, rows, cols] float32 log data, geometry (binned), info dict)."""
+    """Returns (g [N, rows, cols] float32 log data, geometry (binned), info dict). `calibration`: see
+    scan_geometry."""
     p = params or PreprocessParams()
     d = scan.detector
     dark = mean_frames(scan, "dark")
@@ -150,14 +169,12 @@ def preprocess(scan: Scan, params: PreprocessParams | None = None, calibration: 
         for f in fr:
             raw = scan.read(f).astype(np.float64)
             sat |= raw >= p.saturation_frac * d.max_value
-            acc += raw - dark
+            # each repeat scaled to the flats' charge before averaging (repeats may differ in µA / ms)
+            q = f.exposure.charge if f.exposure is not None else None
+            acc += (raw - dark) * (flat_charge / q if q and flat_charge else 1.0)
         net = fix_defects(acc / len(fr), bad | sat)
         n_sat += int(sat.sum())
-        scale = 1.0
-        q = fr[0].exposure.charge if fr[0].exposure is not None else None
-        if q is not None and flat_charge:
-            scale = q / flat_charge
-        ratio = bin_image(net, p.binning) / (scale * flat_b)
+        ratio = bin_image(net, p.binning) / flat_b
         gi = -np.log(np.maximum(ratio, p.min_ratio))
         if out is None:
             out = np.empty((n,) + gi.shape, np.float32)

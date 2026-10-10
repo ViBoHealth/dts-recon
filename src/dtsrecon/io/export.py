@@ -23,12 +23,18 @@ def _vol_dict(vol: VolumeSpec) -> dict:
 
 
 def write_tiff(path: str | Path, f: np.ndarray, vol: VolumeSpec, meta: dict | None = None) -> Path:
-    """ImageJ-compatible float32 stack (Fiji shows mm spacing) plus <path>.json with the full grid and meta."""
+    """ImageJ-compatible float32 stack (Fiji shows mm spacing) plus <path>.json with the full grid and meta.
+    Stacks over ~4 GB are written as BigTIFF (classic TIFF offsets are 32-bit; Fiji opens BigTIFF via
+    Bio-Formats); the grid is then only in the sidecar and the resolution tags."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tifffile.imwrite(path, np.ascontiguousarray(f, dtype=np.float32), imagej=True,
-                     resolution=(1 / vol.voxel_xy, 1 / vol.voxel_xy),
-                     metadata={"spacing": vol.dz, "unit": "mm", "axes": "ZYX"})
+    a = np.ascontiguousarray(f, dtype=np.float32)
+    res = (1 / vol.voxel_xy, 1 / vol.voxel_xy)
+    if a.nbytes < 3.9 * 2**30:
+        tifffile.imwrite(path, a, imagej=True, resolution=res, metadata={"spacing": vol.dz, "unit": "mm", "axes": "ZYX"})
+    else:
+        tifffile.imwrite(path, a, bigtiff=True, resolution=res, resolutionunit="NONE",
+                         metadata={"spacing": vol.dz, "unit": "mm", "axes": "ZYX"})
     side = {"volume": _vol_dict(vol), "units": "1/mm (not quantitative)",
             "layout": "[z, y, x]; row index +y, column index +x; z above the detector face", **(meta or {})}
     path.with_suffix(".json").write_text(json.dumps(side, indent=2, default=str))

@@ -28,31 +28,6 @@ EXAMPLE_CAL_POSE = ((0.5, -0.3, 2.0), (3.0, -2.0, 0.5))  # calibration phantom p
 
 # ---------------------------------------------------------------- mock scans
 
-def _calibration_line_integrals(true_geom: ProjectionGeometry, phantom, pose):
-    """Full-frame -ln(I/I0) for the bead phantom: uniform PMMA background + exact sphere chords in windows
-    around each bead shadow (no voxels, so full 0.1 mm resolution is cheap)."""
-    from .calibration.measure import SimulatedWindows
-    from .phantoms.calibration import projected_beads, shadow_radius_px
-
-    sw = SimulatedWindows(true_geom, phantom, pose, noise=None)
-    P = phantom.world_beads(pose)
-    uv = projected_beads(true_geom, P)
-    rad = shadow_radius_px(true_geom, P, phantom.bead_radius)
-    g = true_geom
-
-    def li(i):
-        out = np.full((g.n_rows, g.n_cols), sw._bg)
-        for m in range(len(P)):
-            h = int(np.ceil(rad[i, m])) + 3
-            c, r = int(round(uv[i, m, 0])), int(round(uv[i, m, 1]))
-            r0, r1, c0, c1 = max(r - h, 0), min(r + h + 1, g.n_rows), max(c - h, 0), min(c + h + 1, g.n_cols)
-            if r1 > r0 and c1 > c0:
-                out[r0:r1, c0:c1] += sw(i, r0, r1, c0, c1) - sw._bg
-        return out
-
-    return li
-
-
 def mock_scan(out_dir: str | Path, phantom: str = "dental", config: str | Path = DEFAULT_CONFIG, binning: int = 4,
               stage_errors: bool = True, realistic: bool = True, i0: float = 1.0e4, exposures_per_position: int = 1,
               seed: int = 0) -> dict:
@@ -76,7 +51,9 @@ def mock_scan(out_dir: str | Path, phantom: str = "dental", config: str | Path =
 
         ph = default_calibration_phantom()
         pose = Pose(tuple(np.radians(EXAMPLE_CAL_POSE[0])), EXAMPLE_CAL_POSE[1])
-        li = _calibration_line_integrals(true, ph, pose)
+        from .calibration.measure import SimulatedWindows
+
+        li = SimulatedWindows(true, ph, pose).full_frame
         truth["calibration_pose"] = {"rotvec_deg": EXAMPLE_CAL_POSE[0], "t_mm": EXAMPLE_CAL_POSE[1]}
         stages = "S0 (analytic beads + PMMA background) + detector model"
     else:
@@ -122,7 +99,7 @@ def calibrate_scan(scan_path: str | Path, out_yaml: str | Path, search_mm: float
 
     t0 = time.perf_counter()
     scan = read_scan(scan_path)
-    g, nominal, info = preprocess(scan, PreprocessParams(binning=1), calibration=None)
+    g, nominal, info = preprocess(scan, PreprocessParams(binning=1), calibration="encoders")
     if nominal.pixel_pitch_u > 0.2:
         raise ValueError(f"calibration needs full-resolution frames (pixel {nominal.pixel_pitch_u} mm); bead shadows are ~2 mm")
     r = calibrate(ArrayWindows(g), nominal, default_calibration_phantom(), search_mm=search_mm)
@@ -158,13 +135,13 @@ def default_volume(geom: ProjectionGeometry, voxel_mm: float, z_range, xy_margin
 
 def reconstruct(engine, g: np.ndarray, method: str, n_iter: int = 10) -> np.ndarray:
     from .recon.dts_fbp import DTSFBPParams, dts_fbp
-    from .recon.iterative import asd_pocs, os_sart
+    from .recon.iterative import ASD_POCS_TUNED, asd_pocs, default_subsets, os_sart
 
-    n_sub = max(2, min(6, g.shape[0] // 4))
+    n_sub = default_subsets(g.shape[0])
     if method == "os-sart":
         return os_sart(engine, g, n_iter, n_sub)
-    if method == "asd-pocs":  # parameters tuned in M4 (docs/decisions.md item 22)
-        return asd_pocs(engine, g, n_iter=n_iter, n_subsets=n_sub, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))[0]
+    if method == "asd-pocs":
+        return asd_pocs(engine, g, n_iter=n_iter, n_subsets=n_sub, **ASD_POCS_TUNED)[0]
     if method == "dts-fbp":
         return dts_fbp(engine, g, DTSFBPParams(mode="radial", edge_taper_mm=40.0))
     raise ValueError(f"method must be one of {METHODS}")

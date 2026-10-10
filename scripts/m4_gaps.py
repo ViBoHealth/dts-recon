@@ -38,7 +38,7 @@ from dtsrecon.phantoms.dental import dental_phantom  # noqa: E402
 from dtsrecon.phantoms.iq import iq_phantom  # noqa: E402
 from dtsrecon.phantoms.primitives import Box, Cylinder, Ellipsoid, Phantom  # noqa: E402
 from dtsrecon.recon.dts_fbp import DTSFBPParams, dts_fbp  # noqa: E402
-from dtsrecon.recon.iterative import asd_pocs, os_sart  # noqa: E402
+from dtsrecon.recon.iterative import ASD_POCS_TUNED, asd_pocs, default_subsets, os_sart  # noqa: E402
 from dtsrecon.simulate.acquisition import simulate  # noqa: E402
 from dtsrecon.simulate.forward import mu_volume  # noqa: E402
 
@@ -157,12 +157,12 @@ def part_trunc():
     for vname, vol in vols.items():
         eng = LeapEngine(geom, vol)
         truth = mu_volume(ph.voxelize(vol, 2))
-        n_sub = max(2, min(6, geom.n_projections // 4))
+        n_sub = default_subsets(geom.n_projections)
         recons = {
             "DTS-FBP zero pad": lambda: dts_fbp(eng, g, DTSFBPParams(mode="radial")),
             "DTS-FBP edge extrap.": lambda: dts_fbp(eng, g, DTSFBPParams(mode="radial", edge_taper_mm=40.0)),
             "OS-SART": lambda: os_sart(eng, g, 10, n_sub),
-            "ASD-POCS": lambda: asd_pocs(eng, g, n_iter=10, n_subsets=n_sub, n_tv=10, alpha=0.05, tv_weights=(0.25, 1.0, 1.0))[0],
+            "ASD-POCS": lambda: asd_pocs(eng, g, n_iter=10, n_subsets=n_sub, **ASD_POCS_TUNED)[0],
         }
         zs = vol.axis("z")
         for mname, fn in recons.items():

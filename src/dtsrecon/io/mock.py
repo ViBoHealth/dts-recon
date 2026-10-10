@@ -27,15 +27,15 @@ from .scan import DetectorMeta, Exposure, Frame, GeometryMeta, ScanManifest, wri
 @dataclass
 class DetectorModel:
     offset_adu: float = 1000.0  # PLACEHOLDER
-    offset_sigma: float = 20.0
-    column_offset_sigma: float = 5.0
-    gain_lowfreq: float = 0.05  # rms of the smooth gain map (relative)
-    gain_pixel: float = 0.01  # rms per-pixel gain (relative)
-    adu_per_count: float = 2.0
-    read_noise_adu: float = 4.0
-    dead_frac: float = 5e-5
-    hot_frac: float = 5e-5
-    bit_depth: int = 16
+    offset_sigma: float = 20.0  # PLACEHOLDER
+    column_offset_sigma: float = 5.0  # PLACEHOLDER
+    gain_lowfreq: float = 0.05  # rms of the smooth gain map (relative), PLACEHOLDER
+    gain_pixel: float = 0.01  # rms per-pixel gain (relative), PLACEHOLDER
+    adu_per_count: float = 2.0  # PLACEHOLDER
+    read_noise_adu: float = 4.0  # PLACEHOLDER
+    dead_frac: float = 5e-5  # PLACEHOLDER
+    hot_frac: float = 5e-5  # PLACEHOLDER
+    bit_depth: int = 16  # PLACEHOLDER
     seed: int = 1234  # fixed per detector: the same maps for every scan on this "panel"
 
 
