@@ -1,7 +1,7 @@
 # dts-recon
 
 Digital tomosynthesis reconstruction for the NextGen PANEL moving-source prototype (2D source scan, stationary detector; first use case veterinary dental).
-Project brief: `docs/PROJECT_BRIEF.md`. Working rules: `CLAUDE.md`. Status: Pass A (simulation), M0–M6 built; see `docs/STATUS.md`.
+Project brief: `docs/PROJECT_BRIEF.md`. Working rules: `CLAUDE.md`. Status: Pass A (simulation), M0–M6 built; first real-data test on an older system (`reports/real_data_v1.md`); see `docs/STATUS.md`.
 
 ## Mac setup (Apple Silicon, CPU only)
 

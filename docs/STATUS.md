@@ -1,7 +1,8 @@
-# Status (2026-10-10)
+# Status (2026-10-20)
 
-Pass A (simulation only). No real data exists yet. All physics, detector and geometry values are
-placeholders. Details and numbers are in `docs/decisions.md` (item numbers below).
+Pass A (simulation). All physics, detector and geometry values for the new system are placeholders. A first
+real-data test on an older 45-emitter system (2018 hand data) is in `reports/real_data_v1.md` (item 28).
+Details and numbers are in `docs/decisions.md` (item numbers below).
 
 Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine have not been used.
 
@@ -35,6 +36,19 @@ Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine h
   - OS-SART: 2 min, 5.4 GB peak.
   - ASD-POCS: 3 min, 6.9 GB peak.
   - Calibration from a raw scan: 5 s.
+
+## First real data (older 45-emitter system, 2018; item 28)
+
+- **Tools:** loader, masks and log transform for the old format; sources from air images; anatomy cross-check
+  (M5 estimator with unknown points); DTS-FBP / OS-SART stacks with an HTML viewer. All run on the Mac in
+  about 12 min.
+- **Geometry:** emitters on a regular 12.7 mm grid (0.4 mm rms off-grid). The anatomy agrees with it to within
+  tracking noise.
+- **Depth scale:** not fixed by these data. Air images give S = 125 mm only for isotropic emission. A circular
+  ring reconstructs 1.6–2.0x too flat (simulation-checked), so true heights are probably about 1.75x larger.
+- **Against the old system's AVI:** its horizontal banding is replicated detector-fixed structure (period ∝ depth).
+  Ours has 10–30x less.
+- **Waiting on Gil:** the emitter pitch and source-to-detector distance; keys.txt.
 
 ## Known limitations
 

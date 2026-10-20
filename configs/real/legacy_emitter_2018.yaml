@@ -1,0 +1,34 @@
+# Older multi-emitter DTS system, 2018 data: first real-data test (reports/real_data_v1.md).
+# The data stay outside the repo and are only read. Set DTS_LEGACY_DATA to override data_root.
+# Paths below are relative to data_root. Loader: src/dtsrecon/io/emitter_array.py; run: scripts/real_v1.py.
+data_root: /Users/gtravish/Downloads/sendgb-H3vf2HxCCaz
+
+# Known (source in brackets) / measured from the files / PLACEHOLDER
+detector:
+  size_mm: [114.0, 64.0]      # [cmd.txt] width (columns) x height (rows)
+  full_shape: [1300, 2304]    # measured: rows, cols; 1152 x 650 and 576 x 325 are 2x / 4x binned
+  full_scale: 16383           # measured: 14-bit, air images clip here
+  dark_level: 0.0             # PLACEHOLDER: no dark frames supplied; images look offset-corrected
+sid_mm_cmd: 120.0             # [cmd.txt] --distance-source-detector 120; the air fits measure their own
+old_recon:                    # [cmd.txt] the old system's reconstruction of Andy040618
+  slices: 64
+  object_height_mm: 64.0
+  keys_file_missing: true     # keys.txt (emitter positions) was not supplied
+
+datasets:
+  andy040618:                 # hand, 26 emitters (rows A–D), 2304 x 1300, own flats
+    projections: Andy040618/andy
+    flats: Andy040618/air
+    attenuation: [Andy040618/atten2304x1300, Andy040618/atten1152x650, Andy040618/atten576x325]
+  fingers:                    # hand with ring, 26 emitters, 2304 x 1300, no flats of its own
+    projections: Fingers/fingers
+    flats: Andy040618/air     # borrowed from another session: tested in step 1
+    old_recon_avi: Fingers/recon2304x1300/art4/pics/4608x2600x16.avi   # 16 slices, MJPEG, 2x upscaled
+  andy_wrist:                 # wrist, 26 emitters, 1152 x 650 (Andy/air/*.zip is truncated: ignored)
+    projections: Andy/wrist
+    flats: Andy/air
+    attenuation: [Andy/atten1152x650, Andy/atten576x325]
+    tecplot: Andy/tecplot     # same attenuation as text
+  air_1152:                   # 44 air images, rows A–G, 1152 x 650; A3 only exists in Andy/air
+    flats: .
+    extra: {A3: Andy/air/A3.tif}

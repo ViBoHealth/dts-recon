@@ -5,7 +5,9 @@ Full context, milestones and acceptance criteria: `docs/PROJECT_BRIEF.md`. Read 
 
 ## Current phase
 
-Pass A (simulation only). No real data exists yet. All geometry values in `configs/` are **placeholders**.
+Pass A (simulation). All geometry values in `configs/` are **placeholders**, except `configs/real/`, which points to
+real data from an older multi-emitter system (2018). The data stay outside the repo; never copy them in. First real-data
+test: `reports/real_data_v1.md` (docs/decisions.md item 28).
 M0–M6 built (Mac, LEAP); M7 paused (no bunker); GPU/TIGRE work not started. Summary: `docs/STATUS.md`.
 
 ## Working rules
@@ -45,6 +47,7 @@ python scripts/m0_smoke.py; python scripts/m0_benchmark.py   # linear-sweep comp
 python scripts/m4_study.py [--quick]; python scripts/m4_gaps.py   # M4 trade study and gap studies
 python scripts/m5_study.py [--quick]; python scripts/m5_plots.py  # M5 calibration + sensitivity
 scripts/m6_end_to_end.sh; python scripts/m6_check.py         # M6: mock raw -> calibrate -> recon (data/m6/)
+python scripts/real_v1.py [--steps load,air,anatomy,recon,compare,ringsim]  # real data, 2018 system (data/real_v1/)
 dts mock-scan | info | calibrate | recon | view               # the tool (docs/USAGE.md)
 ```
 

@@ -248,3 +248,30 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
     level); 10 % is a common just-noticeable blur change. Calibration (<= 0.1 mm) is well inside both, so the
     limits matter for a stage specification without calibration and for how often to recalibrate. Revisit
     when stage repeatability is known (hardware team) or if image review says otherwise.
+28. **First real data: older multi-emitter system, 2018 (2026-10-20)** — `reports/real_data_v1.md`,
+    `scripts/real_v1.py`, `src/dtsrecon/io/emitter_array.py`, `src/dtsrecon/calibration/{air,selfcal}.py`,
+    `src/dtsrecon/io/viewer.py`. Data stay outside the repo (`configs/real/legacy_emitter_2018.yaml`).
+    - **Format:**
+      - 16-bit TIFF per emitter (label A2 … G6), 14-bit data, 2304 x 1300 at 0.0495 mm;
+      - no darks: dark = 0 (PLACEHOLDER);
+      - invalid frames (> 1 % of pixels above full scale) are excluded: Fingers B2 is damaged.
+    - **Flat field:** a per-view open-beam level is subtracted (exposure differences). Fingers uses another
+      session's flats: 8.6 % low-frequency residual against 1.3 % with matching flats.
+    - **Sources from air images:** inverse square x obliquity, joint fit with one common S.
+      - Positions are robust; S is degenerate with an emission-angle term, so S = 124.8 mm holds only for
+        isotropic emission (cos^m: 156 mm).
+      - The 1152 air set is a different setup (S 245 mm, pattern scaled 0.72): never mix the two.
+    - **Anatomy cross-check:** the M5 estimator with the bead positions unknown.
+      - Gauge: source translation and scale are not observable; held to the air fit.
+      - Reprojection is 1.2–1.4 px, improved 2–6 % by refinement. The correction (0.4 mm rms) is partly
+        reproducible between datasets but below the voxel effect, so the reconstructions use the air
+        geometry.
+    - **Depth scale:**
+      - **Test:** the ring circularity test, validated on a simulated ring through the same geometry and
+        analysis (k = 0.97–1.13), gives k = 0.57–0.62 on the real ring.
+      - **Conclusion:** heights in the air geometry are probably 1.6–2.0x too small; S/pitch is about 17,
+        not 9.8.
+      - **Status:** not adopted until the emitter pitch and source distance are measured. The stacks keep
+        the air geometry and say so.
+    - **Old AVI banding:** detector-fixed horizontal structure replicated by the source rows; period
+      0.18 mm per frame, linear in depth (r = 0.995), zero at the detector.
