@@ -275,3 +275,20 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
         the air geometry and say so.
     - **Old AVI banding:** detector-fixed horizontal structure replicated by the source rows; period
       0.18 mm per frame, linear in depth (r = 0.995), zero at the detector.
+29. **Real data v2: keys files, setups, pitch and S (2026-10-27)** — `reports/real_data_v2.md`, `scripts/real_v2.py`,
+    `configs/real/legacy_2018_*.yaml` (one per setup). Data stay outside the repo.
+    - **Keys orientation:** measured from parallax without assuming a pattern (rank-1 factorisation of tracked shadow
+      displacements; all eight axis orientations tested). Keys x is along detector columns and keys y along rows, the
+      same sense ("identity"). Grid shape confirmed to 0.2 mm; the absolute pitch is a gauge freedom and not testable
+      this way.
+    - **Setups:** assigned by flat-field match. Fingers belongs to the 1152 air set's setup (B), not Andy040618's (A).
+      v1 used the wrong flats and geometry for it.
+    - **Pitch:** 10 mm, confirmed by Gil (2026-10-27). Reconstructions use the keys grid, never the air-peak grid
+      (12.7 / 17.5 mm). The air fit gets an
+      aimed-emission term (`air.fit_joint_grid`). With the pitch fixed, symmetric emission fits 3x worse; aimed
+      emission fits as well as free positions in setup A. With the pitch confirmed, the peaks are displaced from the sources
+      in both setups; the aimed model is the tested explanation for setup A only.
+    - **S:** setup B ≈ 195 mm (ring, 185–208); setup A ≈ 145 mm (air, pitch fixed). Both PLACEHOLDER in the configs.
+      Setup B's air images do not support the ring value: the aimed model fits only with the grid 20–40 mm off the
+      keys position. Unresolved. Gil (2026-10-27): no distances on record, no further files (air images, projections,
+      keys.txt); set 2's object unknown. S stays inferred.

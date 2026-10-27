@@ -146,3 +146,86 @@ def test_viewer_writes_html(tmp_path):
     out = write_viewer(tmp_path / "v.html", {"a": f, "b": f}, np.array([1.0, 2.0, 3.0]), "T", note="N", hint="H", k0=1)
     html = out.read_text()
     assert '"order": ["a", "b"]' in html and "data:image/png;base64," in html and not any(t in html for t in ("__TITLE__", "__DATA__", "__HINT__", "__K0__"))
+
+
+# ---------------------------------------------------------------- real_data_v2: keys files, geometry-free parallax, pitch-fixed air fit
+
+
+def test_read_keys_both_label_styles(tmp_path):
+    f = tmp_path / "keys.txt"
+    f.write_text("A2 75.7 3\nB1 85.7 13\n\nG6 35.7 63\n")
+    k = ea.read_keys(f)
+    assert k == {"A2": (75.7, 3.0), "B1": (85.7, 13.0), "G6": (35.7, 63.0)}
+    assert ea.keys_rc("B1") == (1, 0)
+    g = tmp_path / "grid.txt"
+    g.write_text("atten100100 40 30\natten160150 90 90\n")
+    k = ea.read_keys(g)
+    assert k == {"r0c0": (40.0, 30.0), "r6c5": (90.0, 90.0)}
+    assert ea.keys_rc("r6c5") == (6, 5)
+    f.write_text("A1 0 0\n")  # a corner: not an emitter of the 45-emitter array
+    with pytest.raises(ValueError):
+        ea.read_keys(f)
+
+
+def _blob_views(geom, P, n=240):
+    """Each feature: a blob plus a satellite in its own direction (so features are distinguishable)."""
+    from dtsrecon.calibration.estimator import _project
+
+    uv = _project(geom.src, geom, P)
+    yy, xx = np.mgrid[0:n, 0:n]
+    g = np.zeros((len(geom.src), n, n), np.float32)
+    for i in range(len(geom.src)):
+        for j in range(len(P)):
+            a = j * np.pi / 3
+            g[i] += np.exp(-((xx - uv[i, j, 0]) ** 2 + (yy - uv[i, j, 1]) ** 2) / 8.0)
+            g[i] += 0.6 * np.exp(-((xx - uv[i, j, 0] - 5 * np.cos(a)) ** 2 + (yy - uv[i, j, 1] - 5 * np.sin(a)) ** 2) / 3.0)
+    return uv, g
+
+
+def test_parallax_recovers_orientation_without_a_pattern():
+    # sources on a 3 x 3 grid whose rows run along -x (as in the keys files: column 1 at +x)
+    S = 120.0
+    rc = np.array([(r, c) for r in range(3) for c in range(3)])
+    keys = np.c_[-10.0 * rc[:, 1], 10.0 * rc[:, 0]] + [20.0, 0.0]  # keys (x, y), mm
+    src = np.c_[1.02 * (keys - keys.mean(0)), np.full(9, S)]  # truth: identity orientation, 2 % larger than the keys
+    geom = _geom(src, n_cols=300, n_rows=300, pitch=0.1)
+    rng = np.random.default_rng(5)
+    P = np.array([[-4.0, -4.0, 12.0], [4.0, -3.0, 28.0], [-3.0, 4.0, 20.0], [3.5, 3.5, 15.0], [0.0, 0.0, 25.0], [-5.0, 0.5, 18.0]])
+    uv, g = _blob_views(geom, P, n=300)
+    ref = 4
+    pts = uv[ref]
+    tr = selfcal.track_free(g, ref, pts, half=8, search=30, chain=selfcal.grid_chain(rc, ref))
+    err = np.linalg.norm(tr["uv"] - uv, axis=2)
+    assert np.median(err) < 0.1 and np.mean(err < 0.3) > 0.8  # sub-pixel, except a feature whose template overlaps another
+    d = tr["uv"] - tr["uv"][ref][None]
+    fp = selfcal.factor_parallax(d, np.ones((9, 6), bool), huber_px=0.5)
+    b_true = P[:, 2] / (S - P[:, 2])
+    assert np.corrcoef(fp["b"], b_true)[0, 1] > 0.999 and (fp["b"] > 0).all()
+    cmp = selfcal.compare_pattern(fp["P"], keys)
+    best = min(cmp, key=lambda o: cmp[o]["rms"])
+    assert best in ("identity", "flip x+y") and cmp["identity"]["alpha"] > 0 > cmp["flip x+y"]["alpha"]
+    assert cmp["identity"]["rms"] < 0.1 and min(c["rms"] for o, c in cmp.items() if o not in ("identity", "flip x+y")) > 3.0
+    assert cmp["identity"]["affine_x_over_y"] == pytest.approx(1.0, abs=0.01)
+
+
+def _aimed_air(sx, sy, qx, qy, S, m, shape, pitch):
+    nr, nc = shape
+    X, Y = np.meshgrid(pitch * (np.arange(nc) - (nc - 1) / 2), pitch * (np.arange(nr) - (nr - 1) / 2))
+    return 1e4 * np.exp(airfit._log_model_aimed(X, Y, sx, sy, qx, qy, S, 0.0, m))
+
+
+def test_pitch_fixed_air_fit_needs_aim():
+    # 10 mm grid, emission axes diverging (kappa 0.5) with m = 4: the peaks sit on a wider grid than the sources
+    S, m, kappa, shape, pitch = 140.0, 4.0, 0.5, (160, 280), 0.4
+    rc = np.array([(r, c) for r in range(3) for c in range(3)])
+    keys = np.c_[10.0 * (rc[:, 1] - 1), 10.0 * (rc[:, 0] - 1)]
+    s = keys + [1.0, -2.0]
+    q = 1.5 * np.ones(2) + (1 + kappa) * (s - 1.5)
+    blocks = [airfit.block_mean(_aimed_air(*s[i], *q[i], S, m, shape, pitch), np.ones(shape, bool), 4, pitch) for i in range(9)]
+    free = airfit.fit_joint_grid(blocks, keys, 150.0, scale=None, aim=False, free_m=False)
+    assert free["scale"] > 1.05  # an isotropic fit puts the sources on the (wider) peak grid
+    normal = airfit.fit_joint_grid(blocks, keys, 150.0, scale=1.0, aim=False, free_m=True)
+    aimed = airfit.fit_joint_grid(blocks, keys, 150.0, scale=1.0, aim=True, free_m=True, m0=2.0, kappa0=0.3)
+    assert aimed["rms"] < 1e-3 < normal["rms"]
+    assert abs(aimed["S"] - S) < 2.0 and abs(aimed["m"] - m) < 0.3 and abs(aimed["kappa"] - kappa) < 0.05
+    assert np.abs(aimed["xy"] - s).max() < 0.05

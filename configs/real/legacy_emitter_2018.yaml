@@ -1,6 +1,8 @@
 # Older multi-emitter DTS system, 2018 data: first real-data test (reports/real_data_v1.md).
 # The data stay outside the repo and are only read. Set DTS_LEGACY_DATA to override data_root.
 # Paths below are relative to data_root. Loader: src/dtsrecon/io/emitter_array.py; run: scripts/real_v1.py.
+# Kept as v1's run config. Per-setup configs (keys, S estimates): legacy_2018_setup_{a,b}.yaml etc. (real_data_v2).
+# Note (v2 §2): Fingers belongs to setup B (the 1152 air set), so its "flats" below are the wrong session's.
 data_root: /Users/gtravish/Downloads/sendgb-H3vf2HxCCaz
 
 # Known (source in brackets) / measured from the files / PLACEHOLDER

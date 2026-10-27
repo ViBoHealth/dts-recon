@@ -1,0 +1,29 @@
+# Older multi-emitter DTS system (2018): data set 2 of v2 (reports/real_data_v2.md). 45 attenuation PNGs, 2304 x 1300,
+# a smooth object with no internal point features; no raw images and no air images, so its setup is unknown.
+# Gil (2026-10-27): object and setup unknown; no other files exist.
+roots:
+  v2: data
+
+detector:
+  size_mm: [114.0, 64.0]
+  full_shape: [1300, 2304]    # measured
+
+attenuation_png:
+  scale: 12619.5              # PLACEHOLDER: Andy040618's PNG scale (A = s p); set 2's own s is not recoverable (noise estimate 9084, method error -22 %..+15 %)
+  placeholder: true
+  open_beam_level_p: 0.225    # measured at the scale above (0.18–0.50 per view); subtracted per view
+
+keys:
+  file: v2:wetransfer_keys-txt_2026-10-27_2037/keys.txt
+  pitch_mm: 10.0              # [keys]; confirmed by Gil 2026-10-27
+  orientation: identity       # weakly measured: outline parallax only (12 mm rms vs >= 26 mm for every other orientation)
+  origin_mm: [57.0, 32.0]     # PLACEHOLDER: keys origin assumed at the corner of pixel (0, 0)
+
+source_distance_mm:
+  value: 195.0                # PLACEHOLDER (assumed): setup B's ring value; the keys offsets are closest to setup B's (x 85.7 equal, y 3.0 vs 2.5)
+  placeholder: true
+
+datasets:
+  set2:
+    root: v2
+    attenuation: wetransfer_keys-txt_2026-10-27_2037

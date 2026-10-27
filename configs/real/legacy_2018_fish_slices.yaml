@@ -1,0 +1,16 @@
+# Old-software reconstruction, fish: 20 slices, 512 x 512, 16-bit PNG. No projections exist (Gil, 2026-10-27): qualitative only
+# (reports/real_data_v2.md §6). Probably a different setup: the keys are a full 7 x 7 grid with other labels.
+roots:
+  v2: data
+slices: v2:wetransfer_slice_9-png_2026-10-27_2035   # slice_0.png … slice_19.png
+keys:
+  file: v2:wetransfer_slice_9-png_2026-10-27_2035/keys.txt
+  labels: atten1RRCCC          # RR = 00…60 (rows), CCC = 100…160 (columns); 49 emitters, no missing corners
+  pitch_mm: 10.0               # [keys] x 40–100 increasing with CCC, y 30–90 increasing with RR; centre (70, 60)
+  orientation: unknown         # x increases with the column label here, the opposite of the A–G files; no projections to test it
+slice_geometry:                # measured from the 7 replicated horizontal lines near the top (one per emitter row)
+  line_spread_px_per_slice: 2.21    # spread of the 7 lines (6 row pitches); see real_data_v2 §6
+  spread_zero_at_slice: -1.2
+  slice_spacing_mm: null       # PLACEHOLDER: needs the slice pixel size and S
+source_distance_mm: {value: null, placeholder: true}
+detector: {placeholder: true}  # unknown; the keys centre (70, 60) suggests a detector of about 140 x 120 mm, not the 114 x 64 one (inferred)

@@ -186,3 +186,185 @@ def bundle_adjust(geom: ProjectionGeometry, uv: np.ndarray, mask: np.ndarray, ga
     return {"geometry": out_geom, "points": P, "correction_mm": src[:, :2] - s0, "src_se_mm": se,
             "rms_px": float(np.sqrt(np.mean(r**2))), "rms_px_fixed_sources": cons["rms_px"], "n_features": int(K),
             "n_obs": int(len(ii)), "success": bool(res.success), "kept": keep}
+
+
+# ---------------------------------------------------------------- geometry-free parallax (real_data_v2)
+#
+# With every source at one height, the shadow of feature j moves by d_ij = u_ij - u_ref,j = -b_j (s_i - s_ref):
+# a rank-1 matrix (views x features) times the 2D source offsets. Factorizing the tracked displacements
+# therefore recovers the source pattern without assuming one, up to the gauge (one common scale, a
+# translation). The sign is fixed by b_j > 0 (features between detector and sources: shadows move opposite
+# to the source), so a point reflection of the pattern is NOT a gauge freedom; rotations, flips, swaps and
+# unequal x / y pitches are all measurable.
+
+
+def _ncc_map(t: np.ndarray, w: np.ndarray) -> np.ndarray:
+    """Normalized cross-correlation of template t over every valid position of window w (valid mode)."""
+    from scipy.signal import fftconvolve
+
+    th, tw = t.shape
+    t = (t - t.mean()) / (t.std() * t.size + 1e-12)
+    num = fftconvolve(w, t[::-1, ::-1], mode="valid")
+    ones = np.ones_like(t)
+    s1 = fftconvolve(w, ones, mode="valid")
+    s2 = fftconvolve(w * w, ones, mode="valid")
+    var = np.maximum(s2 - s1 * s1 / t.size, 1e-12)
+    return num * t.size / np.sqrt(var * t.size)
+
+
+def _ncc_peak(m: np.ndarray) -> tuple[float, float, float, float]:
+    """(row, col) of the best NCC with sub-pixel parabolic refinement, its value and the ambiguity (best
+    value outside +-3 px of the peak / best)."""
+    j = np.unravel_index(int(np.argmax(m)), m.shape)
+    best = m[j]
+    m2 = m.copy()
+    m2[max(j[0] - 3, 0): j[0] + 4, max(j[1] - 3, 0): j[1] + 4] = -np.inf
+    amb = float(m2.max() / best) if best > 0 and np.isfinite(m2.max()) else 1.0
+    sub = [0.0, 0.0]
+    for ax in (0, 1):
+        if 0 < j[ax] < m.shape[ax] - 1:
+            lo = m[(j[0] - 1, j[1]) if ax == 0 else (j[0], j[1] - 1)]
+            hi = m[(j[0] + 1, j[1]) if ax == 0 else (j[0], j[1] + 1)]
+            den = lo - 2 * best + hi
+            sub[ax] = 0.5 * (lo - hi) / den if den != 0 else 0.0
+    return j[0] + sub[0], j[1] + sub[1], float(best), amb
+
+
+def grid_chain(rc: np.ndarray, ref: int) -> list[tuple[int, int]]:
+    """Breadth-first order of the views over the emitter grid (4-neighbours in row/column index, i.e. the
+    labels only, no positions): [(view, parent)], starting with (ref, ref)."""
+    rc = [tuple(map(int, x)) for x in rc]
+    idx = {x: i for i, x in enumerate(rc)}
+    order, seen, q = [(ref, ref)], {ref}, [ref]
+    while q:
+        u = q.pop(0)
+        r, c = rc[u]
+        for nb in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+            v = idx.get(nb)
+            if v is not None and v not in seen:
+                seen.add(v)
+                order.append((v, u))
+                q.append(v)
+    return order
+
+
+def track_free(g: np.ndarray, ref: int, pts: np.ndarray, half: int = 12, search: int = 40,
+               chain: list[tuple[int, int]] | None = None, min_ncc: float = 0.5) -> dict:
+    """Track reference-view points pts (K, 2: col, row) through all views of g (N, rows, cols) by 2D NCC
+    search, with no geometry assumed. Template from the reference view. Without chain the search is
+    +-search px around the reference position in every view; with chain ([(view, parent)], e.g. grid_chain)
+    it is +-search px around the position found in the parent view (small steps between neighbouring
+    emitters: fewer false matches), and a feature lost in a parent (NCC < min_ncc) is not searched further
+    down that branch. Returns uv (N, K, 2), ncc (N, K), ambiguity (N, K; lower is better)."""
+    N, K = g.shape[0], len(pts)
+    uv = np.full((N, K, 2), np.nan)
+    ncc = np.full((N, K), np.nan)
+    amb = np.full((N, K), np.nan)
+    order = chain if chain is not None else [(ref, ref)] + [(i, ref) for i in range(N) if i != ref]
+    for k in range(K):
+        c, rw = int(round(pts[k, 0])), int(round(pts[k, 1]))
+        frac = pts[k] - (c, rw)  # the template is cut at the rounded position: carry the sub-pixel part
+        t = g[ref, rw - half: rw + half + 1, c - half: c + half + 1]
+        if t.shape != (2 * half + 1, 2 * half + 1):
+            continue
+        uv[ref, k] = pts[k]
+        ncc[ref, k], amb[ref, k] = 1.0, 0.0
+        for i, par in order:
+            if i == ref:
+                continue
+            if chain is not None and not (ncc[par, k] >= min_ncc):
+                continue
+            cc, rr = (int(round(uv[par, k, 0])), int(round(uv[par, k, 1]))) if chain is not None else (c, rw)
+            r0, c0 = max(rr - half - search, 0), max(cc - half - search, 0)
+            w = g[i, r0: rr + half + search + 1, c0: cc + half + search + 1]
+            if w.shape[0] <= 2 * half + 2 or w.shape[1] <= 2 * half + 2:
+                continue
+            jr, jc, best, a = _ncc_peak(_ncc_map(t, w))
+            uv[i, k] = (c0 + jc + half + frac[0], r0 + jr + half + frac[1])
+            ncc[i, k], amb[i, k] = best, a
+    return {"uv": uv, "ncc": ncc, "ambiguity": amb}
+
+
+def factor_parallax(d: np.ndarray, mask: np.ndarray, n_iter: int = 50, huber_px: float = 1.0, trim: float | None = None) -> dict:
+    """Robust rank-1 fit d_ij = -b_j P_i (d: N x K x 2 displacements from the reference view, P_i the source
+    offset pattern, 2D). Alternating weighted least squares with Huber weights; the gauge is fixed by
+    rms(P) = 1 and median(b) > 0. trim: drop features whose rms residual exceeds trim x the median feature rms
+    (e.g. corners formed by overlapping edges at different heights, which do not move as points), then refit.
+    Returns P (N, 2), b (K,), residuals (N, K, 2), rms, weights and the mask actually used."""
+    if trim is not None:
+        f = factor_parallax(d, mask, n_iter, huber_px)
+        fr = np.sqrt(np.nanmean(np.sum(f["resid"] ** 2, 2), 0))
+        keep = np.isfinite(fr) & (fr <= trim * np.nanmedian(fr))
+        return {**factor_parallax(d, mask & keep[None], n_iter, huber_px), "n_trimmed": int((mask.any(0) & ~keep).sum())}
+    N, K = mask.shape
+    d = np.where(mask[..., None], d, 0.0)
+    w = mask.astype(float)
+    # start: SVD of the views x (2 features) matrix with missing entries set to 0
+    M = np.concatenate([d[..., 0], d[..., 1]], 0)  # (2N, K)
+    U, s, Vt = np.linalg.svd(M, full_matrices=False)
+    P = -np.c_[U[:N, 0], U[N:, 0]] * s[0]
+    b = Vt[0].copy()
+    for _ in range(n_iter):
+        # b_j given P
+        num = -np.einsum("nk,nkc,nc->k", w, d, P)
+        den = np.einsum("nk,nc,nc->k", w, P, P)
+        b = num / np.maximum(den, 1e-12)
+        # P_i given b
+        num = -np.einsum("nk,nkc,k->nc", w, d, b)
+        den = np.einsum("nk,k->n", w, b * b)
+        P = num / np.maximum(den, 1e-12)[:, None]
+        res = d + b[None, :, None] * P[:, None, :]
+        r = np.linalg.norm(res, axis=2)
+        w = mask * np.minimum(1.0, huber_px / np.maximum(r, 1e-9))
+    sc = np.sqrt(np.mean(np.sum((P - P.mean(0)) ** 2, 1)))
+    used = mask.any(0)
+    sgn = (np.sign(np.median(b[used])) if used.any() else 1.0) or 1.0
+    P, b = P * sgn / sc, b * sgn * sc
+    res = d + b[None, :, None] * P[:, None, :]
+    r = res[mask]
+    return {"P": P, "b": b, "resid": np.where(mask[..., None], res, np.nan), "rms_px": float(np.sqrt(np.mean(np.sum(r**2, 1)))),
+            "median_abs_px": float(np.median(np.linalg.norm(r, axis=1))), "weights": w, "mask": mask,
+            "n_features": int(mask.any(0).sum()), "n_obs": int(mask.sum())}
+
+
+ORIENTATIONS = {  # keys (x, y) -> detector (x, y); identity = keys x along detector columns, y along rows
+    "identity": ((1, 0), (0, 1)), "flip x": ((-1, 0), (0, 1)), "flip y": ((1, 0), (0, -1)), "flip x+y": ((-1, 0), (0, -1)),
+    "swap": ((0, 1), (1, 0)), "swap, flip x": ((0, -1), (1, 0)), "swap, flip y": ((0, 1), (-1, 0)), "swap, flip x+y": ((0, -1), (-1, 0))}
+
+
+def compare_pattern(P: np.ndarray, keys_xy: np.ndarray, weights: np.ndarray | None = None) -> dict:
+    """Fit the recovered pattern P (N, 2; gauge units) to each orientation T of the keys positions k:
+    P ~ alpha T k + t, alpha a signed scale (alpha < 0 = the point-reflected pattern, which needs features
+    below the detector). P is first scaled so that its rms spread equals the keys' (one scale for every
+    orientation), so residuals are in keys units (mm if the keys are mm) and comparable across orientations.
+    For each orientation also: a similarity (free rotation) and an affine fit (x / y pitch ratio, skew).
+    weights: per view (default 1)."""
+    w = np.ones(len(P)) if weights is None else np.asarray(weights, float)
+    Pc = P - np.average(P, 0, w)
+    k0 = keys_xy - np.average(keys_xy, 0, w)
+    Pc = Pc * np.sqrt(np.average(np.sum(k0**2, 1), weights=w) / np.average(np.sum(Pc**2, 1), weights=w))
+    out = {}
+    for name, T in ORIENTATIONS.items():
+        kc = k0 @ np.asarray(T, float).T
+        alpha = float(np.sum(w[:, None] * kc * Pc) / np.sum(w[:, None] * kc * kc))
+        r = Pc - alpha * kc
+        A = np.c_[kc, np.ones(len(kc))]
+        coef, *_ = np.linalg.lstsq(A * np.sqrt(w)[:, None], Pc * np.sqrt(w)[:, None], rcond=None)
+        L = coef[:2].T  # P ~ L k
+        ra = Pc - A @ coef
+        Ms = Pc.T @ (w[:, None] * kc)
+        U2, _, Vt2 = np.linalg.svd(Ms)
+        if np.linalg.det(U2 @ Vt2) < 0:  # proper rotation only
+            U2[:, -1] *= -1
+        Rm = U2 @ Vt2
+        sc = float(np.trace(Rm.T @ Ms) / np.sum(w[:, None] * kc * kc))
+        rs = Pc - sc * kc @ Rm.T
+        out[name] = {"alpha": alpha, "rms": float(np.sqrt(np.average(np.sum(r**2, 1), weights=w))),
+                     "max": float(np.linalg.norm(r, axis=1).max()), "explained": float(1 - np.sum(w * np.sum(r**2, 1)) / np.sum(w * np.sum(Pc**2, 1))),
+                     "sim_rotation_deg": float(np.degrees(np.arctan2(Rm[1, 0], Rm[0, 0]))), "sim_scale": sc,
+                     "sim_rms": float(np.sqrt(np.average(np.sum(rs**2, 1), weights=w))),
+                     "affine_rms": float(np.sqrt(np.average(np.sum(ra**2, 1), weights=w))),
+                     "affine_x_over_y": float(np.linalg.norm(L[:, 0]) / np.linalg.norm(L[:, 1])),
+                     "affine_skew_deg": float(np.degrees(np.arccos(np.clip(L[:, 0] @ L[:, 1] / (np.linalg.norm(L[:, 0]) * np.linalg.norm(L[:, 1])), -1, 1))) - 90),
+                     "resid": r, "resid_sim": rs, "resid_affine": ra}
+    return out

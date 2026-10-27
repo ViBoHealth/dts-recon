@@ -1,7 +1,8 @@
 # Status (2026-10-20)
 
 Pass A (simulation). All physics, detector and geometry values for the new system are placeholders. A first
-real-data test on an older 45-emitter system (2018 hand data) is in `reports/real_data_v1.md` (item 28).
+real-data test on an older 45-emitter system (2018 hand data) is in `reports/real_data_v1.md` (item 28); the second,
+with the old software's keys files, in `reports/real_data_v2.md` (item 29).
 Details and numbers are in `docs/decisions.md` (item numbers below).
 
 Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine have not been used.
@@ -48,7 +49,19 @@ Everything below ran on the Mac (M5 Max, CPU, LEAP). TIGRE and the GPU machine h
   ring reconstructs 1.6–2.0x too flat (simulation-checked), so true heights are probably about 1.75x larger.
 - **Against the old system's AVI:** its horizontal banding is replicated detector-fixed structure (period ∝ depth).
   Ours has 10–30x less.
-- **Waiting on Gil:** the emitter pitch and source-to-detector distance; keys.txt.
+- **Answered by Gil (2026-10-27):** pitch 10 mm; no distances on record; keys.txt not available. See item 29.
+
+## Real data v2 (keys files, new wrist and set-2 data, old-software slices; item 29)
+
+- **Keys:** exact 10 mm grids. Their orientation on the detector is measured from parallax (identity); the grid shape
+  is confirmed to 0.2 mm.
+- **Setups:** Fingers and the new wrist share the 1152 air set's setup (B). v1 had given Fingers setup A's geometry.
+- **S with the 10 mm pitch:** setup B ≈ 195 mm (ring), setup A ≈ 145 mm (air images, aimed-emission model). Both are
+  placeholders. Setup B's air images do not support the ring value (unresolved).
+- **Recon:** the new wrist and set 2 are reconstructed (DTS-FBP, OS-SART). The old dental and fish slices were reviewed
+  qualitatively: replicated detector-fixed lines, spacing linear in slice index.
+- **Gil's answers (2026-10-27):** pitch is 10 mm. No distances on record and no further files, so S stays inferred and
+  the dental and fish comparison stays qualitative.
 
 ## Known limitations
 

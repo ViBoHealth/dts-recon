@@ -1,0 +1,53 @@
+# Older multi-emitter DTS system (2018): setup B, the one the 1152 x 650 air set belongs to (reports/real_data_v2.md).
+# Members, by flat-field match (open-beam low-frequency residual with these flats, real_data_v2 §2):
+#   air_1152 (44 air images, rows A–G), Andy/wrist (1152), Fingers (2304; v1 used setup A's flats by mistake),
+#   wrist_v2 (2304, data set 1 of v2).
+# The data stay outside the repo and are only read. Loader: src/dtsrecon/io/emitter_array.py; run: scripts/real_v2.py.
+roots:
+  v1: /Users/gtravish/Downloads/sendgb-H3vf2HxCCaz     # 2018 data of real_data_v1 (DTS_LEGACY_DATA overrides)
+  v2: data                                             # relative to the repo; gitignored WeTransfer folders
+
+detector:
+  size_mm: [114.0, 64.0]      # [cmd.txt] width (columns) x height (rows)
+  full_shape: [1300, 2304]    # measured
+  full_scale: 16383           # measured: 14-bit
+  dark_level: 0.0             # PLACEHOLDER: no dark frames supplied
+
+keys:                         # emitter positions from the old software's keys file
+  file: v2:wetransfer_wrist_2026-10-27_2033/keys_all.txt
+  pitch_mm: 10.0              # [keys] 10.0 x 10.0, exactly regular; confirmed by Gil 2026-10-27
+  orientation: identity       # measured (parallax, Fingers and wrist_v2): keys x along detector columns, keys y along rows
+  origin_mm: [57.0, 32.0]     # PLACEHOLDER: keys (x, y) of the detector centre, assuming the keys origin is the corner of pixel (0, 0); parallax cannot measure it (gauge)
+  rotation_deg: 0.0           # measured (parallax): +0.01 (Fingers), +0.13 (wrist_v2); not applied. The 1152 air fit gives -0.68 (peaks, not sources)
+
+source_distance_mm:           # S, source plane to detector, with the keys pitch
+  value: 195.0                # PLACEHOLDER (inferred): Fingers ring with the keys pitch, mid-range of the two methods; real_data_v2 §5.1
+  placeholder: true
+  estimates:
+    ring_fingers: [185.0, 208.0]   # measured: DTS-FBP / OS-SART, ring z/x equal to a simulated circular ring's (assumes the ring is circular)
+    air_images: null                # measured: no usable value; the aimed model fits (S >= 280) only with the grid 20–40 mm off the keys position
+    cmd_txt: 120.0                  # Andy040618's cmd.txt, which is setup A, not this setup
+    gil: unknown                    # Gil 2026-10-27: no distances on record
+
+datasets:
+  air_1152:
+    root: v1
+    flats: .
+    extra: {A3: Andy/air/A3.tif}
+    shape: [650, 1152]        # 2x binned
+  andy_wrist:
+    root: v1
+    projections: Andy/wrist
+    flats: Andy/air
+  fingers:
+    root: v1
+    projections: Fingers/fingers
+    flats: .                  # air_1152, upsampled 2x (measured best match: 1.27 % vs 8.6 % with Andy040618/air)
+    flats_upsample: 2
+    exclude: [B2]             # damaged file (v1)
+  wrist_v2:
+    root: v2
+    projections: wetransfer_wrist_2026-10-27_2033
+    flats: .                  # air_1152 from root v1, upsampled 2x (2.2 % vs 7.2 %); no air images of its own
+    flats_root: v1
+    flats_upsample: 2

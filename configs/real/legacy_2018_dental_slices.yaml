@@ -1,0 +1,15 @@
+# Old-software reconstruction, dental (jaw with molars): 32 slices, 1000 x 1200 (cols x rows), 16-bit PNG.
+# No projections exist (Gil, 2026-10-27): qualitative comparison only (reports/real_data_v2.md §7). The keys file is the one the old software used.
+roots:
+  v2: data
+slices: v2:wetransfer_keys-txt_2026-10-27_2038      # slice_0.png … slice_31.png
+keys:
+  file: v2:wetransfer_keys-txt_2026-10-27_2038/keys.txt
+  pitch_mm: 10.0              # [keys] 45 emitters A2…G6; x 28.2–88.2, y 5–65 (offset +2.5, +2 from the wrist keys)
+  orientation: identity       # assumed (same labels and layout as the measured sets)
+slice_geometry:               # measured from the replicated detector-fixed lines (copies spaced pitch x z / S)
+  line_spacing_px_per_slice: 1.61
+  spacing_zero_at_slice: 0.94 # slice ~1 is the detector plane
+  slice_spacing_mm: null      # PLACEHOLDER: needs the slice pixel size and S (dz = 1.61 px/slice x pixel x S / 10 mm)
+source_distance_mm: {value: null, placeholder: true}
+detector: {placeholder: true} # unknown: 1000 x 1200 slices do not match the 2304 x 1300 detector without an unknown crop/rotation

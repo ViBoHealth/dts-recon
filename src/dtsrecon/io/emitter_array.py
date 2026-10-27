@@ -17,6 +17,7 @@ missing): they are fitted from the air images (calibration.air).
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +46,35 @@ def emitter_rc(label: str) -> tuple[int, int]:
 def emitter_index(label: str) -> int:
     emitter_rc(label)
     return EMITTERS.index(label.strip().upper())
+
+
+def read_keys(path: str | Path) -> dict[str, tuple[float, float]]:
+    """Emitter positions from an old-software keys file: one 'label x y' line per emitter (x, y apparently mm
+    in a detector-corner frame; see reports/real_data_v2.md). Labels are either A2…G6 (45-emitter array) or
+    atten1RRCCC (full 7 x 7 grid, RR = 00…60 rows, CCC = 100…160 columns), the latter returned as 'r<row>c<col>'
+    (0-based)."""
+    out = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split()
+        if not f:
+            continue
+        if len(f) != 3:
+            raise ValueError(f"{path}: bad line {line!r}")
+        lab = f[0].strip()
+        m = re.fullmatch(r"atten1(\d\d)(\d\d\d)", lab)
+        if m:
+            lab = f"r{int(m.group(1)) // 10}c{(int(m.group(2)) - 100) // 10}"
+        else:
+            lab = lab.upper()
+            emitter_rc(lab)
+        out[lab] = (float(f[1]), float(f[2]))
+    return out
+
+
+def keys_rc(label: str) -> tuple[int, int]:
+    """(row, col), 0-based, of a read_keys label (A2 or r<row>c<col>)."""
+    m = re.fullmatch(r"r(\d)c(\d)", label)
+    return (int(m.group(1)), int(m.group(2))) if m else emitter_rc(label)
 
 
 def find_images(folder: str | Path, extra: dict[str, str | Path] | None = None) -> dict[str, Path]:
