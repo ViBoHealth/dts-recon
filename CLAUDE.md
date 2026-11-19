@@ -18,7 +18,7 @@ M0–M6 built (Mac, LEAP); M7 paused (no bunker); GPU/TIGRE work not started. Su
 - **Geometry convention is fixed** (brief §4.1: mm, origin at detector center, +z toward source, +x along the detector column direction). Do not change it without an entry in `docs/decisions.md` and Gil's approval.
 - **Engine isolation.** Only `src/dtsrecon/engines/` may import `tigre` or `leapct`.
 - **Placeholders stay labeled.** Any value without a confirmed source carries a `# PLACEHOLDER` comment or a `placeholder: true` YAML field.
-- **New dependencies:** ask before adding any beyond numpy, scipy, matplotlib, pyyaml, pydantic, tifffile, pydicom, napari, pytest, tigre, leapct, imageio (approved 2026-10-09: hard import of leapct's `leapctype.py`), xraydb (approved 2026-10-09: NIST attenuation data for S2).
+- **New dependencies:** ask before adding any beyond numpy, scipy, matplotlib, pyyaml, pydantic, tifffile, pydicom, napari, pytest, tigre, leapct, imageio (approved 2026-10-09: hard import of leapct's `leapctype.py`), xraydb (approved 2026-10-09: NIST attenuation data for S2), pillow (approved 2026-11-18: already imported for PNG/WebP reading), delocate and auditwheel (approved 2026-11-18: build machine only, bundle LEAP's libraries into wheels; see `docs/PACKAGING.md`).
 - **Milestone reports** go in `reports/Mx_<name>.md`, with figures in `reports/figures/`. Each report states the simulation stages used (S0–S5), the geometry config, and the hardware the run used.
 
 ## Machines

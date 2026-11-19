@@ -292,3 +292,15 @@ Entries are dated. Geometry-convention changes need Gil's approval (CLAUDE.md).
       Setup B's air images do not support the ring value: the aimed model fits only with the grid 20–40 mm off the
       keys position. Unresolved. Gil (2026-10-27): no distances on record, no further files (air images, projections,
       keys.txt); set 2's object unknown. S stays inferred.
+30. **Packaging for other insiders (Gil, 2026-11-18)**: proposal in `docs/PACKAGING.md`. Nothing built yet.
+    - **Users:** probably on Windows PCs, so a Mac-only build is not acceptable.
+    - **Data:** regular grids of 5 × 5 to 10 × 10 projections with known geometry. Raw detector output as TIFF; DICOM
+      input is unlikely.
+    - **GPU:** whether users have one is not known yet.
+    - **Repository and licence:** the company GitHub repository is private. dts-recon is internal use only and gets no
+      licence. LEAP's MIT notice still ships with any build.
+    - **Plan (proposed):** a Linux x86_64 wheel with the patched LEAP built in, run on Windows through WSL2. Fallbacks:
+      Docker, then native Windows. A macOS wheel for Gil only.
+    - **Dependencies approved:** pillow (runtime; already imported in `io/emitter_array.py` and `io/viewer.py`, arriving
+      through matplotlib until now), now declared in `pyproject.toml`. delocate and auditwheel are build-machine only
+      and not yet used.

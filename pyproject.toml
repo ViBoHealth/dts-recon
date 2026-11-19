@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2",
     "tifffile",
     "xraydb",
+    "pillow",  # PNG/WebP reading (io/emitter_array.py, io/viewer.py); approved 2026-11-18
 ]
 # leapct is not on PyPI; it is built from source (third_party/leap/build_leap_mac.sh).
 # tigre is installed on the GPU machine only.
