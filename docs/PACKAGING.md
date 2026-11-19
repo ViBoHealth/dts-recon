@@ -21,7 +21,39 @@ Evidence labels used below:
 - **Repository:** the company GitHub repository is private.
 - **Dependencies approved:** Pillow (declared in `pyproject.toml`), delocate and auditwheel (build machine only). Recorded in `docs/decisions.md` item 30 and `CLAUDE.md`.
 
+- **GPU (Milaan, 2026-11-19):** one collaborator has a **Linux PC with a CUDA GPU**:
+  - NVIDIA Quadro RTX 5000 (Turing, compute capability 7.5; the capability is inferred from the model), 16 GB;
+  - CUDA toolkit 12.3 with compiler;
+  - driver 580.178.04 (supports CUDA ≤ 13.0).
+
+  So native Linux is a real target as well as WSL2, and a CUDA build has at least one user.
+
+  From Milaan's hardinfo report (read 2026-11-19):
+  - **System:** Linux Mint 21.2 (Ubuntu 22.04 base), kernel 6.8.0-138, x86_64, glibc 2.35, so manylinux_2_28 wheels apply.
+  - **CPU and memory:** Intel i9-9900K (8 cores / 16 threads), 64 GB RAM, about 810 GB free disk.
+  - **Software:** Python 3.10.12, gcc 11.4.0 (supported by CUDA 12.3), cmake 3.22.1, make 4.3.
+  - **Not in the report:** git, uv/conda, nvcc, sudo rights.
+  - **Two GPU entries:** the PCI list shows two "Quadro RTX 5000" VGA entries. That may be two cards; confirm with `nvidia-smi`.
+  - **NVIDIA driver not loaded when the report ran.** The kernel module list (512 modules) has no `nvidia`, `nvidia_uvm` or `nvidia_drm` (only `i2c_nvidia_gpu`), and OpenGL renders in software (`llvmpipe`). If `nvidia-smi` fails, CUDA will not work until the driver is rebuilt or reinstalled for the running kernel. That is an admin task on Milaan's side (inferred: a kernel update without a matching driver module).
+  - **Viewer:** with software OpenGL, napari will be slow. 2D slice viewing should be fine (inferred), and Fiji is an alternative.
+
 These change the recommendation below. The first version (wheel for macOS + Linux first) is replaced.
+
+### 0.1 What Milaan's machine changes (2026-11-19)
+
+1. **It can be the GPU validation machine.** The GPU side of M0/M1 has never run: the CUDA LEAP build and the round-trip, projector and adjoint tests on a GPU (`pytest -m gpu`). It was planned for a rented GPU. Milaan's machine can do it, if Milaan agrees. Until that passes, no CUDA build goes to users (section 2, CUDA row).
+2. **A CUDA LEAP build for Linux.**
+   - Source and patches are the same as the CPU build.
+   - It uses LEAP's default `src/CMakeLists.txt`, which is the CUDA one; the Mac script swaps in `cpu_CMakeLists.txt`.
+   - Target `CMAKE_CUDA_ARCHITECTURES=75`, with CUDA 12.3 (inferred; not built yet).
+   - Apply both patches here too. They change CPU code only, but they keep the CPU fallback correct and write the build marker the adapter checks.
+   - Prefer building from source over conda-forge's `leapct`. That package is unpatched, pulls a CUDA PyTorch, and carries no CPU fix.
+3. **First native Linux install test.** Milaan's PC is also where the Linux wheel (CPU first) gets its first test outside Gil's Mac.
+4. **Expected gain (inferred):**
+   - Our OS-SART keeps the data on the CPU and calls LEAP's GPU projector per subset, so each call copies data to and from the GPU.
+   - The ASD-POCS TV step is NumPy, on the CPU.
+   - So the speed-up will be well below the raw GPU speed. Measure it rather than assume it.
+   - 16 GB should hold the dental-size volume (0.54 GB per copy at 850 × 600 × 265), since LEAP splits CPU-resident data into chunks for the GPU (read: `leapctype` docstring).
 
 ## 1. Recommendation (revised)
 
@@ -230,10 +262,17 @@ All sizes are installed sizes. Dependency sizes were measured in `.venv`:
 3. The Linux wheel, tested in WSL2 on one real PC.
 4. The Docker image if needed.
 5. The macOS wheel for Gil.
-6. CUDA once GPU access is known and the GPU projector is validated.
+6. CUDA: GPU validation on Milaan's machine (0.1 item 1), then a CUDA Linux build for users with NVIDIA GPUs.
 
 **Still open:**
-- Whether users have NVIDIA GPUs (Gil to check).
+- Whether the other users have NVIDIA GPUs. Milaan has one (section 0).
+- For Milaan (distribution, Python, gcc and cmake are now known from the hardinfo report):
+  - output of `nvidia-smi` (does the driver load? one GPU or two?);
+  - `nvcc --version`;
+  - sudo rights;
+  - whether git and uv or conda are installed;
+  - whether the PC can reach GitHub;
+  - whether they agree to run the GPU validation tests.
 - Whether their PCs allow WSL2 or Docker Desktop (IT policy, admin rights).
 - The details of their image files (4.3 item 1).
 - Which GitHub organisation and repository to use.
@@ -241,7 +280,7 @@ All sizes are installed sizes. Dependency sizes were measured in `.venv`:
 **Status of the questions below** (answers in section 0):
 - Answered: 4 (no licence), 5 (private company GitHub), 6 (approved).
 - Partly answered: 1 (Windows PCs), 2 (regular grids, known geometry, raw TIFF from the detector).
-- Waiting on the GPU check: 8.
+- Partly answered (2026-11-19): 8. Milaan has a CUDA GPU on Linux; the other users are not known yet.
 - Still open: 3, 7, 9, 10.
 
 1. **Users and machines:** how many people, which operating systems (Apple Silicon Macs? Intel? Linux? Windows?), and are they comfortable with Python/uv, or would Docker suit them better? This decides whether the wheel or Docker comes first.
