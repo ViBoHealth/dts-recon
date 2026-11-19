@@ -13,6 +13,10 @@ third_party/leap/build_leap_mac.sh /path/outside/repo/leap_build   # LEAP v1.26 
 .venv/bin/pytest
 ```
 
+## Linux setup (CPU or NVIDIA GPU; also WSL2)
+
+`docs/LINUX_SETUP.md`, with `third_party/leap/build_leap_linux.sh cpu|cuda <build_dir> <python>`. Not yet tested on Linux.
+
 ## Using the tool
 
 `docs/USAGE.md`: mock raw scan -> calibration -> reconstruction -> TIFF / DICOM -> napari. In short:

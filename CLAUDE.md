@@ -37,6 +37,7 @@ M0–M6 built (Mac, LEAP); M7 paused (no bunker); GPU/TIGRE work not started. Su
 ```
 uv pip install --python .venv/bin/python -e '.[dev,leap,dicom,viz]'  # Python 3.12 venv; see README for LEAP build
 third_party/leap/build_leap_mac.sh <build_dir>               # LEAP v1.26 CPU build (patched) into .venv
+third_party/leap/build_leap_linux.sh cpu|cuda <build_dir> <python>  # Linux / WSL2 build (untested; docs/LINUX_SETUP.md)
 pytest                                                        # CPU tests, ~20 s
 pytest -m gpu                                                 # GPU machine only
 dts plot-geometry configs/geometry_dental.yaml
@@ -51,6 +52,7 @@ scripts/m6_end_to_end.sh; python scripts/m6_check.py         # M6: mock raw -> c
 python scripts/real_v1.py [--steps load,air,anatomy,recon,compare,ringsim]  # real data, 2018 system (data/real_v1/)
 python scripts/real_v2.py [--steps keys,load,parallax,air,ring,depth,recon,old]  # real data v2 (data/real_v2/)
 dts mock-scan | info | calibrate | recon | view               # the tool (docs/USAGE.md)
+python scripts/make_share_copy.py ../dts-recon-shared         # collaborator copy without real data (docs/PACKAGING.md 5.7)
 ```
 
 ## LEAP gotchas (measured in M0, see docs/decisions.md)

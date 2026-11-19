@@ -42,6 +42,8 @@ These change the recommendation below. The first version (wheel for macOS + Linu
 ### 0.1 What Milaan's machine changes (2026-11-19)
 
 1. **It can be the GPU validation machine.** The GPU side of M0/M1 has never run: the CUDA LEAP build and the round-trip, projector and adjoint tests on a GPU (`pytest -m gpu`). It was planned for a rented GPU. Milaan's machine can do it, if Milaan agrees. Until that passes, no CUDA build goes to users (section 2, CUDA row).
+   - **Correction (read 2026-11-19):** no test carries the `gpu` marker yet, so `pytest -m gpu` selects nothing. The check is the normal `pytest` run against a CUDA build of LEAP: `LeapEngine` then uses the GPU automatically (`get_gpu() >= 0`), so the LEAP projection, backprojection and adjoint tests run on the GPU.
+   - Steps for Milaan: `docs/LINUX_SETUP.md`, with `third_party/leap/build_leap_linux.sh cpu|cuda`. Both were written on the Mac and are untested on Linux. Checked here: the script's syntax and argument errors, both patches apply cleanly to LEAP v1.26, and LEAP's top-level CMake file writes `build/lib/libleapct.so`.
 2. **A CUDA LEAP build for Linux.**
    - Source and patches are the same as the CPU build.
    - It uses LEAP's default `src/CMakeLists.txt`, which is the CUDA one; the Mac script swaps in `cpu_CMakeLists.txt`.
@@ -218,6 +220,12 @@ All sizes are installed sizes. Dependency sizes were measured in `.venv`:
      - 20 figures derived from the 2018 hand data are tracked under `reports/figures/real_data_v1/` and `real_data_v2/`;
      - `configs/real/*.yaml`, `scripts/real_v2.py` and `reports/real_data_v2.md` contain `/Users/gtravish/...` paths.
      - If insiders get repo access (not just the wheel), decide whether that is acceptable.
+   - **Decided (Gil, 2026-11-19):** collaborators get a separate private repository, `ViBoHealth/dts-recon-shared`, with its own history. `scripts/make_share_copy.py` builds it from a commit of this repository:
+     - It leaves out the real-data material and the internal notes (`CLAUDE.md`, `docs/decisions.md`, `docs/STATUS.md`).
+     - Every tracked file must be on its share list or its keep-out list, so a new file stops the copy until it is placed on one of them.
+     - It replaces home-directory paths with `~`.
+     - It refuses to finish if an excluded path, a home path, a large file or a non-PNG binary turns up.
+     - First copy: 133 files from `76bbf7e`, 35 kept out. The 92 tests pass on the copy.
 8. **Undeclared dependency.** `Pillow` is imported in `src/` (`io/emitter_array.py`, `io/viewer.py`) but not declared. It currently arrives through matplotlib. Declaring it needs Gil's approval (it is not on the CLAUDE.md list).
 
 ## 6. Steps and rough effort (inferred, one developer)
@@ -285,7 +293,7 @@ All sizes are installed sizes. Dependency sizes were measured in `.venv`:
 
 1. **Users and machines:** how many people, which operating systems (Apple Silicon Macs? Intel? Linux? Windows?), and are they comfortable with Python/uv, or would Docker suit them better? This decides whether the wheel or Docker comes first.
 2. **Their data:** which detectors and file formats (TIFF, raw, DICOM)? Do they have darks and flats? How do they know their geometry: encoders, a CAD model, or a phantom? This decides what `dts import` must read.
-3. **Repo or tool:** will insiders get the source repo, or only the built tool? (See 5.7: real-data figures and Gil's paths are in the repo.)
+3. **Repo or tool:** will insiders get the source repo, or only the built tool? (See 5.7: real-data figures and Gil's paths are in the repo.) **Answered 2026-11-19:** a cleaned copy in a separate private repository (5.7).
 4. **Licence and terms** for dts-recon itself, and any confidentiality wording to ship with it.
 5. **Hosting:** may we create a private GitHub remote, for CI, releases and a container registry? Or would you rather use files on a shared drive?
 6. **New dependencies:** Pillow (runtime; already installed through matplotlib). Build-only tools: delocate, auditwheel, optionally cibuildwheel and scikit-build-core.
